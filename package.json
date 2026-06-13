@@ -1,0 +1,12 @@
+{
+  "name": "bulutgames",
+  "private": true,
+  "scripts": {
+    "predeploy": "mkdir -p public && cp index.html public/index.html",
+    "deploy": "wrangler deploy",
+    "dev": "npm run predeploy && wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.14.0"
+  }
+}
