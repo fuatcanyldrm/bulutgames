@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="format-detection" content="telephone=no" />
+<title>Oda Kırma Oyunu</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .hidden { display: none; }
+  html, body {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%; height: 100dvh;
+    min-height: 100dvh; min-height: -webkit-fill-available;
+    overflow: hidden; font-family: "Comic Sans MS", "Trebuchet MS", sans-serif;
+    -webkit-text-size-adjust: 100%;
+    background: #222233;
+  }
+  canvas {
+    display: block; position: fixed; top: 0; left: 0;
+    touch-action: none; pointer-events: none;
+  }
+  body.modal-open canvas {
+    z-index: -1;
+    pointer-events: none !important;
+  }
+
+  #hud {
+    position: fixed; top: max(16px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left));
+    color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    font-size: 28px; font-weight: bold; z-index: 20;
+    pointer-events: none;
+  }
+  #hud div { margin-bottom: 4px; }
+
+  #top-right-hud {
+    position: fixed; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 20;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    font-size: 20px; font-weight: bold;
+    pointer-events: none;
+  }
+  #shop-btn-corner {
+    font-family: inherit; font-size: 16px; font-weight: bold;
+    color: #fff; background: linear-gradient(180deg, #6cd9c8, #1ba896);
+    border: none; border-radius: 12px; padding: 8px 16px;
+    cursor: pointer; box-shadow: 0 4px 0 #117a6c; pointer-events: auto;
+    -webkit-appearance: none; appearance: none; touch-action: manipulation;
+  }
+  #shop-btn-corner:active { transform: translateY(2px); box-shadow: 0 2px 0 #117a6c; }
+
+  #crosshair {
+    position: fixed; top: 50%; left: 50%;
+    width: 12px; height: 12px; margin: -6px 0 0 -6px;
+    border: 2px solid rgba(255,255,255,0.8);
+    border-radius: 50%; z-index: 20; pointer-events: none;
+  }
+
+  .overlay {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(20, 20, 40, 0.85);
+    z-index: 1000; overflow-y: auto; padding: 16px;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+    isolation: isolate;
+  }
+  body.modal-open #touch-controls {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .overlay.hidden { display: none !important; }
+  .overlay:not(.hidden) { display: flex !important; }
+
+  .panel {
+    background: #fff7e0; border-radius: 24px;
+    padding: 28px 24px; text-align: center;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+    max-height: calc(100dvh - 32px); max-height: calc(100vh - 32px);
+    overflow-y: auto; max-width: min(480px, calc(100vw - 32px));
+    width: 100%;
+    position: relative; z-index: 101;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+  }
+  .panel h1 { font-size: 40px; color: #e74c3c; margin-bottom: 16px; }
+  .panel p { font-size: 20px; color: #444; margin-bottom: 24px; line-height: 1.5; }
+  .panel button {
+    font-family: inherit; font-size: 28px; font-weight: bold;
+    color: #fff; background: linear-gradient(180deg, #ff7e3e, #e65c00);
+    border: none; border-radius: 16px; padding: 16px 48px;
+    min-height: 48px; cursor: pointer; box-shadow: 0 6px 0 #a84200;
+    transition: transform 0.05s;
+    -webkit-appearance: none; appearance: none;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .panel button:active { transform: translateY(4px); box-shadow: 0 2px 0 #a84200; }
+  .panel button.secondary {
+    background: linear-gradient(180deg, #6cd9c8, #1ba896); box-shadow: 0 6px 0 #117a6c;
+    font-size: 20px; padding: 12px 32px; margin-top: 8px;
+  }
+  .panel button.secondary:active { box-shadow: 0 2px 0 #117a6c; }
+
+  .store-panel { max-width: 520px; }
+  .pickaxe-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 4px; border-bottom: 2px solid #ffe0b2; text-align: left;
+  }
+  .pickaxe-row:last-child { border-bottom: none; }
+  .pickaxe-row .px-name { font-weight: bold; color: #5a3e1b; font-size: 20px; }
+  .pickaxe-row .px-price { color: #888; font-size: 15px; }
+  .pickaxe-row button {
+    font-size: 16px; padding: 8px 18px; border-radius: 10px;
+    box-shadow: 0 4px 0 #a84200;
+    -webkit-appearance: none; appearance: none; touch-action: manipulation;
+  }
+  .pickaxe-row button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a84200; }
+  .pickaxe-row button:disabled {
+    background: #ccc; color: #888; box-shadow: 0 4px 0 #999; cursor: default; transform: none;
+  }
+  .pickaxe-row button.equipped {
+    background: linear-gradient(180deg, #6cd97e, #2ecc71); box-shadow: 0 4px 0 #1e9e53;
+  }
+
+  #touch-controls { display: none; }
+  #touch-controls.active { display: block; z-index: 50; }
+
+  #joystick-zone {
+    position: fixed; left: max(24px, env(safe-area-inset-left)); bottom: max(24px, env(safe-area-inset-bottom));
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.35);
+    z-index: 50; touch-action: none;
+  }
+  #joystick-knob {
+    position: absolute; left: 50%; top: 50%;
+    width: 56px; height: 56px; margin: -28px 0 0 -28px;
+    border-radius: 50%; background: rgba(255,255,255,0.55);
+  }
+
+  #swing-btn {
+    position: fixed; right: max(28px, env(safe-area-inset-right)); bottom: max(28px, env(safe-area-inset-bottom));
+    width: 96px; height: 96px; border-radius: 50%;
+    font-size: 40px; z-index: 50; border: none;
+    background: linear-gradient(180deg, #ff7e3e, #e65c00);
+    box-shadow: 0 6px 0 #a84200; color: #fff;
+    touch-action: manipulation; -webkit-appearance: none; appearance: none;
+  }
+  #swing-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a84200; }
+
+  .math-panel { max-width: 440px; }
+  .math-panel h1 { font-size: 34px; color: #3498db; }
+  #math-timer { font-size: 32px; color: #e74c3c; font-weight: bold; margin-bottom: 8px; }
+  #math-progress { font-size: 22px; color: #27ae60; font-weight: bold; margin-bottom: 16px; }
+  .math-question {
+    font-size: 42px; font-weight: bold; color: #2c3e50;
+    background: #fff; border-radius: 16px; padding: 20px;
+    margin-bottom: 20px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .math-options {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+  }
+  .math-options button {
+    font-size: 26px; padding: 16px 8px; border-radius: 14px;
+    min-height: 48px; box-shadow: 0 4px 0 #a84200;
+    -webkit-appearance: none; appearance: none;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent; cursor: pointer;
+  }
+  .math-options button.correct { background: linear-gradient(180deg, #6cd97e, #2ecc71); box-shadow: 0 4px 0 #1e9e53; }
+  .math-options button.wrong { background: linear-gradient(180deg, #ff7675, #d63031); box-shadow: 0 4px 0 #a02929; }
+  #math-feedback { font-size: 20px; font-weight: bold; min-height: 28px; color: #555; }
+  #load-error {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    display: none; align-items: center; justify-content: center;
+    background: #222; color: #fff; z-index: 200; padding: 24px; text-align: center;
+  }
+  #load-error.visible { display: flex; }
+</style>
+</head>
+<body>
+  <div id="load-error">
+    <p>Oyun yüklenemedi. Safari’yi güncelleyip sayfayı yenile.<br />İnternet bağlantını da kontrol et.</p>
+  </div>
+
+  <div id="hud">
+    <div id="timer">Süre: 00:60</div>
+    <div id="score">Skor: 0</div>
+    <div id="coins">Para: 0 🪙</div>
+  </div>
+  <div id="top-right-hud">
+    <div id="cat-count">🐱 Bulunan: 0</div>
+    <button id="shop-btn-corner">🛒 Mağaza</button>
+  </div>
+  <div id="crosshair"></div>
+
+  <div id="touch-controls">
+    <div id="joystick-zone"><div id="joystick-knob"></div></div>
+    <button id="swing-btn">🪓</button>
+  </div>
+
+  <div id="start-screen" class="overlay">
+    <div class="panel">
+      <h1>🪓 Oda Kırma Oyunu</h1>
+      <p id="desktop-instructions">
+        W A S D ile yürü, mouse ile etrafına bak.<br />
+        Tıkla veya BOŞLUK'a bas, kazmayla odadaki<br />
+        her şeyi kır!
+      </p>
+      <p id="touch-instructions" class="hidden">
+        Sol alttaki çemberle yürü, ekranı parmağınla<br />
+        kaydırarak etrafına bak, 🪓 düğmesiyle kır!
+      </p>
+      <p>
+        🐱 Renkli kutunun içinde bir kedi var ama<br />
+        o kutu sağlam, birden çok vuruş ister!<br />
+        60 saniyede bulup kırmazsan kedi kurtulamaz.<br />
+        Ama 20 saniyede 3 rastgele matematik sorusunu<br />
+        (toplama, çıkarma, çarpma, bölme) doğru çözersen paran kalır!<br /><br />
+        Her kırdığın eşya 1 lira verir. Mağazadan<br />
+        daha hızlı çekiçler alabilirsin!
+      </p>
+      <button id="start-btn">Başla</button>
+      <br />
+      <button id="shop-btn-start" class="secondary">🛒 Mağaza</button>
+      <p style="margin-top:16px;font-size:16px;">
+        <a href="/" style="color:#1ba896;font-weight:bold;text-decoration:none;">← Ana sayfa</a>
+      </p>
+    </div>
+  </div>
+
+  <div id="end-screen" class="overlay hidden">
+    <div class="panel">
+      <h1 id="end-title">Oyun Bitti!</h1>
+      <p id="final-score">Skorun: 0 / 9</p>
+      <button id="restart-btn">Tekrar Oyna</button>
+      <br />
+      <button id="shop-btn-end" class="secondary">🛒 Mağaza</button>
+    </div>
+  </div>
+
+  <div id="math-screen" class="overlay hidden">
+    <div class="panel math-panel">
+      <h1>📐 Paranı Kurtar!</h1>
+      <p>Kedi kutuda kaldı! Paranın gitmesini istemiyorsan<br />20 saniyede <strong>3 rastgele soruyu</strong> doğru çöz!</p>
+      <p style="font-size:16px;color:#666;margin-bottom:12px;">Toplama, çıkarma, çarpma ve bölme (3. sınıf)</p>
+      <div id="math-timer">Süre: 20</div>
+      <div id="math-progress">Doğru: 0 / 3</div>
+      <div id="math-question" class="math-question">?</div>
+      <div id="math-options" class="math-options"></div>
+      <p id="math-feedback"></p>
+    </div>
+  </div>
+
+  <div id="store-screen" class="overlay hidden">
+    <div class="panel store-panel">
+      <h1>🛒 Çekiç Mağazası</h1>
+      <p>Paran: <span id="store-coins">0</span> 🪙</p>
+      <div id="pickaxe-list"></div>
+      <button id="store-close-btn">Kapat</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+    window.addEventListener("error", () => {
+      document.getElementById("load-error")?.classList.add("visible");
+    });
+    window.addEventListener("unhandledrejection", () => {
+      document.getElementById("load-error")?.classList.add("visible");
+    });
+
+    // ---------- Safari / platform tespiti ----------
+    const ua = navigator.userAgent;
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Edg|OPR|FxiOS/i.test(ua);
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const isMobileSafari = isSafari && isIOS;
+    const supportsPointerLock = "pointerLockElement" in document && !isIOS;
+
+    function loadStorage(key, fallback) {
+      try {
+        const v = localStorage.getItem(key);
+        return v === null ? fallback : v;
+      } catch {
+        return fallback;
+      }
+    }
+    function saveStorage(key, value) {
+      try { localStorage.setItem(key, value); } catch { /* Safari gizli mod */ }
+    }
+
+    function bindTap(el, handler) {
+      if (!el) return;
+      let lastTap = 0;
+      const run = (e) => {
+        const now = Date.now();
+        if (now - lastTap < 300) return;
+        lastTap = now;
+        handler(e);
+      };
+      const onActivate = (e) => {
+        if (e.type === "pointerup" && e.pointerType === "mouse" && e.button !== 0) return;
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        run(e);
+      };
+      if (window.PointerEvent) {
+        el.addEventListener("pointerup", onActivate);
+      } else {
+        el.addEventListener("touchend", onActivate, { passive: false });
+        el.addEventListener("click", onActivate);
+      }
+    }
+
+    // ---------- Sabitler ----------
+    const ROOM_SIZE = 18;
+    const WALL_HEIGHT = 4.5;
+    const MOVE_SPEED = 5;
+    const BOUND = ROOM_SIZE / 2 - 0.5;
+    const PLAYER_RADIUS = 0.38;
+    const HIT_RANGE = 3.5;
+    const EYE_HEIGHT = 1.6;
+    const GAME_DURATION = 60;
+    const MATH_QUIZ_DURATION = 20;
+    const MATH_REQUIRED = 3;
+    const FRAG_GRAVITY = 12;
+    const FRAG_LIFETIME = 2.0;
+    const FRAG_FADE_START = 1.2;
+
+    // Çekiçler: ucuzdan pahalıya, hızdan/vuruş gücünden de ucuzdan pahalıya
+    const PICKAXES = [
+      { name: "Tahta Çekiç", price: 0, cooldown: 0.35, duration: 0.25, hitsPerObject: 7, headColor: 0xbfc4c9, handleColor: 0x6b4423 },
+      { name: "Demir Çekiç", price: 300, cooldown: 0.28, duration: 0.2, hitsPerObject: 5, headColor: 0x9aa5ad, handleColor: 0x5a3a1a },
+      { name: "Çelik Çekiç", price: 500, cooldown: 0.2, duration: 0.15, hitsPerObject: 3, headColor: 0x5c6b73, handleColor: 0x3e2a14 },
+      { name: "Elmas Çekiç", price: 750, cooldown: 0.12, duration: 0.1, hitsPerObject: 2, headColor: 0x7ee8fa, handleColor: 0x2c2c2c },
+      { name: "Lazer Çekiç", price: 1000, cooldown: 0.3, duration: 0.12, hitsPerObject: 1, headColor: 0xff2255, handleColor: 0x1a1a2e, emissive: 0xff2255, isLaser: true },
+    ];
+
+    const LASER_COLOR = 0xff2255;
+    const LASER_LIFETIME = 0.15;
+
+    // ---------- Sahne, kamera, renderer ----------
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x222233);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
+
+    const player = new THREE.Group();
+    scene.add(player);
+    player.add(camera);
+    camera.position.set(0, EYE_HEIGHT, 0);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !isMobileSafari,
+      alpha: false,
+      powerPreference: isMobileSafari ? "low-power" : "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobileSafari ? 1.5 : 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    document.body.insertBefore(renderer.domElement, document.body.firstChild);
+
+    renderer.domElement.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+    });
+    renderer.domElement.addEventListener("webglcontextrestored", () => {
+      scheduleResize();
+    });
+
+    function getViewportSize() {
+      const vv = window.visualViewport;
+      return {
+        width: vv ? vv.width : window.innerWidth,
+        height: vv ? vv.height : window.innerHeight,
+        offsetTop: vv ? vv.offsetTop : 0,
+        offsetLeft: vv ? vv.offsetLeft : 0,
+      };
+    }
+
+    function resizeRenderer() {
+      const { width, height, offsetTop, offsetLeft } = getViewportSize();
+      const canvas = renderer.domElement;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.style.top = `${offsetTop}px`;
+      canvas.style.left = `${offsetLeft}px`;
+      canvas.style.zIndex = canvas.style.pointerEvents === "auto" ? "0" : "-1";
+    }
+
+    function scheduleResize() {
+      resizeRenderer();
+      requestAnimationFrame(resizeRenderer);
+      setTimeout(resizeRenderer, 100);
+      setTimeout(resizeRenderer, 350);
+    }
+
+    scheduleResize();
+    window.addEventListener("resize", scheduleResize);
+    window.addEventListener("orientationchange", scheduleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", scheduleResize);
+      window.visualViewport.addEventListener("scroll", scheduleResize);
+    }
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener("change", scheduleResize);
+    }
+
+    // ---------- Işıklar ----------
+    scene.add(new THREE.HemisphereLight(0xddeeff, 0x554433, 0.5));
+
+    const dirLight = new THREE.DirectionalLight(0xfff4e0, 1.4);
+    dirLight.position.set(14, 20, 14);
+    dirLight.target.position.set(0, 0, 0);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(isMobileSafari ? 1024 : 2048, isMobileSafari ? 1024 : 2048);
+    dirLight.shadow.camera.near = 1;
+    dirLight.shadow.camera.far = 50;
+    dirLight.shadow.camera.left = -14;
+    dirLight.shadow.camera.right = 14;
+    dirLight.shadow.camera.top = 14;
+    dirLight.shadow.camera.bottom = -14;
+    dirLight.shadow.bias = -0.0015;
+    scene.add(dirLight);
+    scene.add(dirLight.target);
+
+    // ---------- Oda ----------
+    const half = ROOM_SIZE / 2;
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(ROOM_SIZE, ROOM_SIZE),
+      new THREE.MeshStandardMaterial({ color: 0x9b7653, roughness: 0.8, metalness: 0.05 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const ceiling = new THREE.Mesh(
+      new THREE.PlaneGeometry(ROOM_SIZE, ROOM_SIZE),
+      new THREE.MeshStandardMaterial({ color: 0x87ceeb, roughness: 0.85, metalness: 0 })
+    );
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.y = WALL_HEIGHT;
+    ceiling.receiveShadow = true;
+    scene.add(ceiling);
+
+    function addWall(color, x, y, z, rotY) {
+      const wall = new THREE.Mesh(
+        new THREE.PlaneGeometry(ROOM_SIZE, WALL_HEIGHT),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.9 })
+      );
+      wall.position.set(x, y, z);
+      wall.rotation.y = rotY;
+      wall.receiveShadow = true;
+      scene.add(wall);
+    }
+    addWall(0xaee1f9, 0, WALL_HEIGHT / 2, -half, 0);             // kuzey - normal +z
+    addWall(0xffd6e7, 0, WALL_HEIGHT / 2, half, Math.PI);        // güney - normal -z
+    addWall(0xfff3b0, half, WALL_HEIGHT / 2, 0, -Math.PI / 2);   // doğu - normal -x
+    addWall(0xc8f7c5, -half, WALL_HEIGHT / 2, 0, Math.PI / 2);   // batı - normal +x
+
+    // ---------- Kırılabilir objeler ----------
+    const breakables = [];
+
+    function finalizeBreakable(mesh, color, matOpts) {
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.breakable = true;
+      mesh.userData.broken = false;
+      mesh.userData.color = color;
+      mesh.userData.matOpts = matOpts;
+      mesh.userData.originalColor = mesh.material.color.clone();
+      mesh.userData.hitsRequired = 1;
+      mesh.userData.hitsTaken = 0;
+      mesh.geometry.computeBoundingBox();
+      const box = mesh.geometry.boundingBox;
+      const halfX = (box.max.x - box.min.x) * 0.5;
+      const halfY = (box.max.y - box.min.y) * 0.5;
+      const halfZ = (box.max.z - box.min.z) * 0.5;
+      mesh.userData.collider = halfY < 0.12
+        ? null
+        : { halfX: halfX + 0.06, halfZ: halfZ + 0.06 };
+      scene.add(mesh);
+      breakables.push(mesh);
+      return mesh;
+    }
+
+    function addBoxObject(color, w, h, d, x, y, z, matOpts = {}, rot = {}) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...matOpts })
+      );
+      mesh.position.set(x, y, z);
+      mesh.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
+      return finalizeBreakable(mesh, color, matOpts);
+    }
+
+    function addCylinderObject(color, r, h, x, y, z, matOpts = {}, rot = {}) {
+      const mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(r, r, h, 12),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...matOpts })
+      );
+      mesh.position.set(x, y, z);
+      mesh.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
+      return finalizeBreakable(mesh, color, matOpts);
+    }
+
+    function addSphereObject(color, r, x, y, z, matOpts = {}) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(r, 12, 12),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...matOpts })
+      );
+      mesh.position.set(x, y, z);
+      return finalizeBreakable(mesh, color, matOpts);
+    }
+
+    // Vazo'lar (parlak seramik)
+    addCylinderObject(0xe74c3c, 0.25, 1.0, -6, 0.5, -6, { roughness: 0.2, metalness: 0.05 });
+    addCylinderObject(0xe67e22, 0.25, 1.0, 6, 0.5, -5, { roughness: 0.2, metalness: 0.05 });
+    addCylinderObject(0x1abc9c, 0.22, 0.85, 3, 0.425, 5, { roughness: 0.2, metalness: 0.05 });
+    addCylinderObject(0x8e44ad, 0.2, 0.75, -5, 0.375, 2, { roughness: 0.25 });
+    // Masa (ahşap)
+    addBoxObject(0x8b5e3c, 1.4, 0.9, 1.0, -4, 0.45, -3, { roughness: 0.6 });
+    addBoxObject(0xa0522d, 1.0, 0.75, 0.8, 5, 0.375, 1, { roughness: 0.6 });
+    // Sandalye / tabure
+    addBoxObject(0xf1c40f, 0.6, 0.8, 0.6, -5, 0.4, -1, { roughness: 0.55 });
+    addBoxObject(0xe67e22, 0.55, 0.75, 0.55, 4, 0.375, -4, { roughness: 0.55 });
+    addBoxObject(0x2ecc71, 0.5, 0.7, 0.5, -2, 0.35, 5, { roughness: 0.55 });
+    // Resim çerçeveleri (duvara yapışık)
+    addBoxObject(0x9b59b6, 1.2, 1.0, 0.05, 3, 2, -half + 0.05, { roughness: 0.5, metalness: 0.1 });
+    addBoxObject(0x9b59b6, 0.05, 1.0, 1.2, -half + 0.05, 2, 1, { roughness: 0.5, metalness: 0.1 });
+    addBoxObject(0xe84393, 0.05, 0.9, 1.0, half - 0.05, 2.2, -3, { roughness: 0.5, metalness: 0.1 });
+    addBoxObject(0x00b894, 1.0, 0.8, 0.05, -1, 2.1, half - 0.05, { roughness: 0.5, metalness: 0.1 });
+    // Lamba (sıcak ışıltılı metal)
+    addCylinderObject(0x3498db, 0.2, 0.8, 6, 0.4, 4, {
+      roughness: 0.3, metalness: 0.4, emissive: 0xffcc66, emissiveIntensity: 0.5,
+    });
+    addCylinderObject(0xf39c12, 0.18, 0.7, -6, 0.35, -2, {
+      roughness: 0.3, metalness: 0.35, emissive: 0xffdd88, emissiveIntensity: 0.4,
+    });
+    // Sandıklar (ahşap)
+    addBoxObject(0x7f8c8d, 0.8, 0.6, 0.8, 5, 0.3, 3, { roughness: 0.75 });
+    addBoxObject(0x95a5a6, 0.6, 0.5, 0.6, -3, 0.25, 6, { roughness: 0.75 });
+    addBoxObject(0x6d4c41, 0.7, 0.55, 0.7, 1, 0.275, 6, { roughness: 0.75 });
+    // Kitaplık (doğu duvarına yaslı)
+    addBoxObject(0x5d4037, 1.0, 2.0, 0.4, half - 0.25, 1.0, -1, { roughness: 0.65 });
+    addBoxObject(0x4e342e, 0.9, 1.8, 0.35, -half + 0.2, 0.9, -4, { roughness: 0.65 });
+    // Duvar saati (güney duvarında)
+    addCylinderObject(0xf5f5f5, 0.3, 0.05, -4, 2.7, half - 0.05, { roughness: 0.4, metalness: 0.2 }, { x: Math.PI / 2 });
+    addCylinderObject(0xecf0f1, 0.25, 0.05, 5, 2.5, -half + 0.05, { roughness: 0.4, metalness: 0.2 }, { x: Math.PI / 2 });
+    // Oyuncak kutusu & kutular
+    addBoxObject(0xff6f91, 0.9, 0.5, 0.7, 2, 0.25, -6, { roughness: 0.6 });
+    addBoxObject(0xfdcb6e, 0.7, 0.45, 0.6, -7, 0.225, -4, { roughness: 0.6 });
+    // Ayna (doğu duvarında)
+    addBoxObject(0xcfe8f0, 0.05, 1.2, 0.8, half - 0.05, 2.3, 3, { roughness: 0.15, metalness: 0.6 });
+    // Sehpalar
+    addBoxObject(0xd2a679, 0.5, 0.45, 0.5, -6, 0.225, 0, { roughness: 0.65 });
+    addBoxObject(0xc49a6c, 0.55, 0.4, 0.55, 0, 0.2, 4, { roughness: 0.65 });
+    // Saksı bitkisi & top
+    addCylinderObject(0x27ae60, 0.18, 0.5, -4, 0.25, -7, { roughness: 0.7 });
+    addSphereObject(0xe17055, 0.22, 7, 0.22, -6, { roughness: 0.6 });
+    // Halı (ince kutu)
+    addBoxObject(0xc0392b, 2.0, 0.03, 1.5, 0, 0.015, 0, { roughness: 0.9 });
+
+    // Mağazadan çekiç alındıkça odaya eklenen ekstra eşyalar.
+    // unlockPickaxe: PICKAXES içindeki index sahip olununca eşya odada belirir.
+    addBoxObject(0x16a085, 0.7, 0.7, 0.7, 4, 0.35, 6, { roughness: 0.6 }).userData.unlockPickaxe = 1;
+    addCylinderObject(0xc0392b, 0.22, 0.9, -5, 0.45, 5, { roughness: 0.3, metalness: 0.1 }).userData.unlockPickaxe = 2;
+    addBoxObject(0x34495e, 0.05, 1.0, 1.0, half - 0.05, 1.8, -4, { roughness: 0.5, metalness: 0.2 }).userData.unlockPickaxe = 3;
+
+    const CAT_BOX_SPOTS = [
+      { x: -7, z: 7 }, { x: 7, z: -2 }, { x: 0, z: -7 },
+      { x: -4, z: 2 }, { x: 6, z: -6 }, { x: -2, z: 6 },
+      { x: 5, z: 5 }, { x: -6, z: -5 },
+    ];
+    const CAT_BOX_COLORS = [0xd62839, 0x2ecc71, 0x9b59b6, 0xf39c12, 0x3498db, 0xe84393];
+    const catBox = addBoxObject(0xd62839, 0.9, 0.9, 0.9, CAT_BOX_SPOTS[0].x, 0.45, CAT_BOX_SPOTS[0].z, { roughness: 0.6 });
+    catBox.userData.hitsRequired = 3;
+    catBox.userData.isCatBox = true;
+
+    // Reset'te eşyaları rastgele yerlere koymak için her objenin yerleşim kuralı
+    // (breakables ile aynı sırada, kedi kutusu hariç - o kendi mantığıyla yerleşir)
+    const FLOOR_RANGE = 7;
+    const WALL_RANGE = [-6.5, 6.5];
+    const OBJECT_LAYOUTS = [
+      { type: "floor" }, { type: "floor" }, { type: "floor" }, { type: "floor" },
+      { type: "floor" }, { type: "floor" },
+      { type: "floor" }, { type: "floor" }, { type: "floor" },
+      { type: "wall", axis: "x", range: WALL_RANGE },
+      { type: "wall", axis: "z", range: WALL_RANGE },
+      { type: "wall", axis: "z", range: WALL_RANGE },
+      { type: "wall", axis: "x", range: WALL_RANGE },
+      { type: "floor" }, { type: "floor" },
+      { type: "floor" }, { type: "floor" }, { type: "floor" },
+      { type: "wall", axis: "z", range: WALL_RANGE },
+      { type: "wall", axis: "z", range: WALL_RANGE },
+      { type: "wall", axis: "x", range: WALL_RANGE },
+      { type: "wall", axis: "x", range: WALL_RANGE },
+      { type: "floor" }, { type: "floor" },
+      { type: "wall", axis: "z", range: WALL_RANGE },
+      { type: "floor" }, { type: "floor" },
+      { type: "floor" }, { type: "floor" },
+      { type: "floor" },
+      { type: "floor" }, { type: "floor" },
+      { type: "wall", axis: "z", range: WALL_RANGE },
+    ];
+
+    // Şu an açık olan (kilitsiz) eşyaların toplam sayısı - HUD'da gösterilir
+    function getTotalObjects() {
+      return breakables.filter(
+        (o) => o.userData.unlockPickaxe === undefined || ownedPickaxes.includes(o.userData.unlockPickaxe)
+      ).length;
+    }
+
+    function randomizeObjectPositions() {
+      for (let i = 0; i < OBJECT_LAYOUTS.length; i++) {
+        const obj = breakables[i];
+        const layout = OBJECT_LAYOUTS[i];
+        if (layout.type === "floor") {
+          obj.position.x = (Math.random() * 2 - 1) * FLOOR_RANGE;
+          obj.position.z = (Math.random() * 2 - 1) * FLOOR_RANGE;
+        } else {
+          const [min, max] = layout.range;
+          obj.position[layout.axis] = min + Math.random() * (max - min);
+        }
+      }
+    }
+
+    // ---------- Kedi modeli ----------
+    function createCatMesh() {
+      const group = new THREE.Group();
+      const furMat = new THREE.MeshStandardMaterial({ color: 0xe8954a, roughness: 0.8 });
+
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), furMat);
+      body.scale.set(1.3, 0.9, 1);
+      body.position.set(0, 0.2, 0);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), furMat);
+      head.position.set(0.28, 0.32, 0);
+
+      const earGeo = new THREE.ConeGeometry(0.05, 0.12, 8);
+      const ear1 = new THREE.Mesh(earGeo, furMat);
+      ear1.position.set(0.32, 0.45, 0.08);
+      ear1.rotation.z = -0.3;
+      const ear2 = new THREE.Mesh(earGeo, furMat);
+      ear2.position.set(0.32, 0.45, -0.08);
+      ear2.rotation.z = -0.3;
+
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 8), furMat);
+      tail.position.set(-0.32, 0.32, 0);
+      tail.rotation.z = Math.PI / 3;
+
+      for (const part of [body, head, ear1, ear2, tail]) {
+        part.castShadow = true;
+        group.add(part);
+      }
+      return group;
+    }
+
+    // ---------- Çekiç (birinci şahıs viewmodel — elde tutuluyor) ----------
+    const PICKAXE_POSE = { x: 0.3, y: -0.44, z: -0.34, rotX: 0.72, rotY: -0.18, rotZ: 0.1 };
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xe8b89d, roughness: 0.88 });
+
+    const pickaxe = new THREE.Group();
+    pickaxe.scale.setScalar(1.15);
+
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.11, 0.12), skinMat);
+    hand.position.set(0.01, -0.02, 0.01);
+    hand.rotation.z = 0.08;
+
+    const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.07, 0.05), skinMat);
+    thumb.position.set(0.07, 0.01, 0.02);
+    thumb.rotation.z = -0.5;
+
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.034, 0.62, 8),
+      new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.8 })
+    );
+    handle.position.set(0, 0.28, 0.02);
+    handle.rotation.z = -0.06;
+
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.09, 0.13),
+      new THREE.MeshStandardMaterial({ color: 0xbfc4c9, roughness: 0.25, metalness: 0.85 })
+    );
+    head.position.set(0.02, 0.56, 0.05);
+    head.rotation.z = -0.12;
+
+    for (const part of [hand, thumb, handle, head]) {
+      part.castShadow = false;
+      pickaxe.add(part);
+    }
+    pickaxe.position.set(PICKAXE_POSE.x, PICKAXE_POSE.y, PICKAXE_POSE.z);
+    pickaxe.rotation.set(PICKAXE_POSE.rotX, PICKAXE_POSE.rotY, PICKAXE_POSE.rotZ);
+    pickaxe.renderOrder = 10;
+    camera.add(pickaxe);
+
+    const vmLight = new THREE.PointLight(0xffeedd, 0.55, 1.8);
+    vmLight.position.set(0.15, -0.15, -0.15);
+    camera.add(vmLight);
+
+    const raycaster = new THREE.Raycaster();
+    let bobPhase = 0;
+    let isPlayerMoving = false;
+
+    // ---------- Para & Mağaza ----------
+    let coins = Number(loadStorage("okk_coins", "0")) || 0;
+    let ownedPickaxes = JSON.parse(loadStorage("okk_owned", "[0]"));
+    let equippedPickaxe = Number(loadStorage("okk_equipped", "0")) || 0;
+    let catsFound = Number(loadStorage("okk_cats_found", "0")) || 0;
+
+    const catCountEl = document.getElementById("cat-count");
+    function updateCatCountHud() {
+      catCountEl.textContent = `🐱 Bulunan: ${catsFound}`;
+    }
+    updateCatCountHud();
+
+    function saveProgress() {
+      saveStorage("okk_coins", String(coins));
+      saveStorage("okk_owned", JSON.stringify(ownedPickaxes));
+      saveStorage("okk_equipped", String(equippedPickaxe));
+    }
+
+    function addCoins(amount) {
+      coins += amount;
+      updateCoinsHud();
+      saveProgress();
+    }
+
+    function equipPickaxe(idx) {
+      equippedPickaxe = idx;
+      const px = PICKAXES[idx];
+      head.material.color.setHex(px.headColor);
+      handle.material.color.setHex(px.handleColor);
+      head.material.emissive.setHex(px.emissive ?? 0x000000);
+      head.material.emissiveIntensity = px.emissive ? 1.5 : 0;
+      saveProgress();
+    }
+    equipPickaxe(equippedPickaxe);
+
+    const storeScreen = document.getElementById("store-screen");
+    const storeCoinsEl = document.getElementById("store-coins");
+    const pickaxeListEl = document.getElementById("pickaxe-list");
+    let storeReturnScreen = null;
+
+    function renderStore() {
+      storeCoinsEl.textContent = coins;
+      pickaxeListEl.innerHTML = "";
+      PICKAXES.forEach((px, i) => {
+        const row = document.createElement("div");
+        row.className = "pickaxe-row";
+
+        const info = document.createElement("span");
+        const priceLabel = px.price === 0 ? "Başlangıç çekici" : `${px.price} ₺`;
+        info.innerHTML = `<span class="px-name">${px.name}</span><br><span class="px-price">${priceLabel}</span>`;
+
+        const btn = document.createElement("button");
+        if (equippedPickaxe === i) {
+          btn.textContent = "Seçili";
+          btn.className = "equipped";
+          btn.disabled = true;
+        } else if (ownedPickaxes.includes(i)) {
+          btn.textContent = "Kullan";
+          bindTap(btn, () => { equipPickaxe(i); renderStore(); });
+        } else {
+          btn.textContent = `Satın Al (${px.price} ₺)`;
+          btn.disabled = coins < px.price;
+          bindTap(btn, () => {
+            if (coins < px.price) return;
+            coins -= px.price;
+            ownedPickaxes.push(i);
+            equipPickaxe(i);
+            updateCoinsHud();
+            renderStore();
+          });
+        }
+
+        row.appendChild(info);
+        row.appendChild(btn);
+        pickaxeListEl.appendChild(row);
+      });
+    }
+
+    function openStore(fromScreen) {
+      storeReturnScreen = fromScreen;
+      renderStore();
+      if (fromScreen) hideOverlay(fromScreen);
+      showOverlay(storeScreen);
+    }
+
+    function isStoreOpen() {
+      return !storeScreen.classList.contains("hidden");
+    }
+
+    function isMathQuizOpen() {
+      return !mathScreen.classList.contains("hidden");
+    }
+
+    let storePauseTime = 0;
+
+    // ---------- Hareket & bakış kontrolleri ----------
+    let yaw = 0;
+    let pitch = 0;
+    const PITCH_LIMIT = Math.PI / 2 - 0.05;
+    let isLocked = false;
+    let mouseLookActive = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    const keys = { w: false, a: false, s: false, d: false };
+
+    if (isTouchDevice) {
+      document.getElementById("touch-controls").classList.add("active");
+      document.getElementById("desktop-instructions").classList.add("hidden");
+      document.getElementById("touch-instructions").classList.remove("hidden");
+    }
+
+    function canControlPlayer() {
+      return isTouchDevice || isLocked || mouseLookActive;
+    }
+
+    function safeRequestPointerLock() {
+      if (!supportsPointerLock) {
+        mouseLookActive = true;
+        return;
+      }
+      try {
+        const req = renderer.domElement.requestPointerLock();
+        if (req && typeof req.catch === "function") {
+          req.catch(() => { mouseLookActive = true; });
+        }
+      } catch {
+        mouseLookActive = true;
+      }
+    }
+
+    function applyLookDelta(dx, dy, sensitivity) {
+      yaw -= dx * sensitivity;
+      pitch -= dy * sensitivity;
+      pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const k = e.key.toLowerCase();
+      if (k in keys) keys[k] = true;
+      if (k === " ") { e.preventDefault(); trySwing(); }
+    });
+    document.addEventListener("keyup", (e) => {
+      const k = e.key.toLowerCase();
+      if (k in keys) keys[k] = false;
+    });
+
+    document.addEventListener("pointerlockchange", () => {
+      isLocked = document.pointerLockElement === renderer.domElement;
+      if (isLocked) mouseLookActive = false;
+    });
+    document.addEventListener("pointerlockerror", () => {
+      mouseLookActive = true;
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (gameState !== "playing" || isStoreOpen() || isMathQuizOpen()) return;
+      if (isLocked) {
+        applyLookDelta(e.movementX, e.movementY, 0.0025);
+      } else if (mouseLookActive && e.buttons === 1) {
+        applyLookDelta(e.movementX, e.movementY, 0.0025);
+      }
+    });
+
+    renderer.domElement.addEventListener("mousedown", (e) => {
+      if (isTouchDevice || gameState !== "playing") return;
+      if (supportsPointerLock && !isLocked) {
+        safeRequestPointerLock();
+        return;
+      }
+      if (!supportsPointerLock || mouseLookActive) {
+        mouseLookActive = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        if (e.button === 0) trySwing();
+      } else if (isLocked && e.button === 0) {
+        trySwing();
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (!isLocked && !supportsPointerLock) mouseLookActive = false;
+    });
+
+    // ---------- Dokunmatik kontroller (tablet) ----------
+    const moveInput = { x: 0, y: 0 };
+    const JOY_RADIUS = 50;
+    const joystickZone = document.getElementById("joystick-zone");
+    const joystickKnob = document.getElementById("joystick-knob");
+    let joystickTouchId = null;
+
+    function updateJoystick(touch) {
+      const rect = joystickZone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let dx = touch.clientX - cx;
+      let dy = touch.clientY - cy;
+      const dist = Math.min(Math.hypot(dx, dy), JOY_RADIUS);
+      const angle = Math.atan2(dy, dx);
+      dx = Math.cos(angle) * dist;
+      dy = Math.sin(angle) * dist;
+      joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      moveInput.x = dx / JOY_RADIUS;
+      moveInput.y = dy / JOY_RADIUS;
+    }
+
+    function resetJoystick() {
+      joystickTouchId = null;
+      moveInput.x = 0;
+      moveInput.y = 0;
+      joystickKnob.style.transform = "translate(0px, 0px)";
+    }
+
+    joystickZone.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (joystickTouchId !== null) return;
+      const touch = e.changedTouches[0];
+      joystickTouchId = touch.identifier;
+      updateJoystick(touch);
+    });
+    joystickZone.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      for (const touch of e.changedTouches) {
+        if (touch.identifier === joystickTouchId) updateJoystick(touch);
+      }
+    });
+    function handleJoystickEnd(e) {
+      for (const touch of e.changedTouches) {
+        if (touch.identifier === joystickTouchId) resetJoystick();
+      }
+    }
+    joystickZone.addEventListener("touchend", handleJoystickEnd);
+    joystickZone.addEventListener("touchcancel", handleJoystickEnd);
+
+    // Ekranı sürükleyerek bakış yönü değiştirme
+    let lookTouchId = null;
+    let lastLookX = 0;
+    let lastLookY = 0;
+
+    function isTouchOnUiControls(clientX, clientY) {
+      const el = document.elementFromPoint(clientX, clientY);
+      return el && (
+        el.closest("#joystick-zone") ||
+        el.closest("#swing-btn") ||
+        el.closest("#shop-btn-corner") ||
+        el.closest(".overlay:not(.hidden)")
+      );
+    }
+
+    renderer.domElement.addEventListener("touchstart", (e) => {
+      if (gameState !== "playing" || lookTouchId !== null) return;
+      const touch = e.changedTouches[0];
+      if (isTouchOnUiControls(touch.clientX, touch.clientY)) return;
+      lookTouchId = touch.identifier;
+      lastLookX = touch.clientX;
+      lastLookY = touch.clientY;
+    }, { passive: true });
+    renderer.domElement.addEventListener("touchmove", (e) => {
+      if (gameState !== "playing" || isStoreOpen() || isMathQuizOpen()) return;
+      for (const touch of e.changedTouches) {
+        if (touch.identifier !== lookTouchId) continue;
+        const dx = touch.clientX - lastLookX;
+        const dy = touch.clientY - lastLookY;
+        lastLookX = touch.clientX;
+        lastLookY = touch.clientY;
+        applyLookDelta(dx, dy, 0.005);
+      }
+    }, { passive: true });
+    function handleLookEnd(e) {
+      for (const touch of e.changedTouches) {
+        if (touch.identifier === lookTouchId) lookTouchId = null;
+      }
+    }
+    renderer.domElement.addEventListener("touchend", handleLookEnd);
+    renderer.domElement.addEventListener("touchcancel", handleLookEnd);
+
+    bindTap(document.getElementById("swing-btn"), () => trySwing());
+
+    // ---------- Ses ----------
+    let audioCtx = null;
+    function playThud(startFreq = 140) {
+      if (!audioCtx) return;
+      try {
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(startFreq / 3.5, 0.001), now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+      } catch { /* Safari ses kısıtı */ }
+    }
+
+    // ---------- Kamera sallanma (shake) ----------
+    let shakeTime = 0;
+
+    // ---------- Kırma mantığı ----------
+    let score = 0;
+    let swingTime = -1;     // -1: sallanmıyor, aksi halde geçen süre
+    let swingCooldown = 0;
+
+    function trySwing() {
+      if (gameState !== "playing" || swingCooldown > 0 || isStoreOpen() || isMathQuizOpen()) return;
+      resumeAudio();
+      swingTime = 0;
+      swingCooldown = PICKAXES[equippedPickaxe].cooldown;
+
+      // Nişangahın baktığı yönde raycast ile en yakın kırılabilir obje
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      raycaster.far = HIT_RANGE;
+      const targets = breakables.filter((o) => o.visible && !o.userData.broken);
+      const hits = raycaster.intersectObjects(targets, false);
+      const best = hits.length > 0 ? hits[0].object : null;
+
+      if (PICKAXES[equippedPickaxe].isLaser) {
+        const origin = new THREE.Vector3();
+        head.getWorldPosition(origin);
+        const dir = new THREE.Vector3();
+        camera.getWorldDirection(dir);
+        const target = best
+          ? best.position.clone()
+          : origin.clone().addScaledVector(dir, HIT_RANGE);
+        spawnLaserBeam(origin, target);
+      }
+
+      if (best) hitObject(best);
+    }
+
+    // ---------- Parçacıklar ----------
+    const fragments = [];
+
+    // ---------- Lazer ışınları ----------
+    const laserBeams = [];
+
+    function spawnLaserBeam(origin, target) {
+      const dir = new THREE.Vector3().subVectors(target, origin);
+      const length = Math.max(dir.length(), 0.01);
+      const mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.03, 0.03, length, 6),
+        new THREE.MeshStandardMaterial({
+          color: LASER_COLOR, emissive: LASER_COLOR, emissiveIntensity: 2,
+          transparent: true, opacity: 1,
+        })
+      );
+      mesh.position.copy(origin).addScaledVector(dir, 0.5);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+      scene.add(mesh);
+      laserBeams.push({ mesh, spawnTime: clock.elapsedTime });
+    }
+
+    function updateLaserBeams(now) {
+      for (let i = laserBeams.length - 1; i >= 0; i--) {
+        const beam = laserBeams[i];
+        const age = now - beam.spawnTime;
+        if (age > LASER_LIFETIME) {
+          scene.remove(beam.mesh);
+          beam.mesh.geometry.dispose();
+          beam.mesh.material.dispose();
+          laserBeams.splice(i, 1);
+          continue;
+        }
+        beam.mesh.material.opacity = 1 - age / LASER_LIFETIME;
+      }
+    }
+    let catMesh = null;
+
+    function hitObject(obj) {
+      obj.userData.hitsTaken++;
+      shakeTime = 0.001; // shake'i başlat (animate içinde işlenir)
+
+      if (obj.userData.hitsTaken < obj.userData.hitsRequired) {
+        playThud(260); // hafif "çat" sesi - henüz kırılmadı
+        obj.material.color.lerp(new THREE.Color(0x1a1a1a), 0.35); // çatlak/hasar görünümü
+        return;
+      }
+
+      playThud(140);
+      breakObject(obj);
+    }
+
+    function breakObject(obj) {
+      obj.userData.broken = true;
+      obj.visible = false;
+      score++;
+      updateScoreHud();
+      addCoins(1);
+
+      if (obj.userData.isCatBox) {
+        catMesh = createCatMesh();
+        catMesh.position.set(obj.position.x, 0, obj.position.z);
+        scene.add(catMesh);
+        catsFound++;
+        saveStorage("okk_cats_found", String(catsFound));
+        updateCatCountHud();
+        endGame("won");
+      }
+
+      const color = obj.userData.color;
+      const matOpts = obj.userData.matOpts || {};
+      const center = obj.position.clone();
+      for (let i = 0; i < 8; i++) {
+        const size = 0.12 + Math.random() * 0.08;
+        const frag = new THREE.Mesh(
+          new THREE.BoxGeometry(size, size, size),
+          new THREE.MeshStandardMaterial({
+            color, transparent: true, opacity: 1,
+            roughness: matOpts.roughness ?? 0.7, metalness: matOpts.metalness ?? 0,
+          })
+        );
+        frag.castShadow = true;
+        frag.position.copy(center);
+        frag.position.x += (Math.random() - 0.5) * 0.4;
+        frag.position.y += (Math.random() - 0.5) * 0.4 + 0.2;
+        frag.position.z += (Math.random() - 0.5) * 0.4;
+        scene.add(frag);
+        fragments.push({
+          mesh: frag,
+          velocity: new THREE.Vector3(
+            (Math.random() - 0.5) * 3,
+            Math.random() * 3 + 1.5,
+            (Math.random() - 0.5) * 3
+          ),
+          spawnTime: clock.elapsedTime,
+          grounded: false,
+          halfSize: size / 2,
+        });
+      }
+    }
+
+    function updateFragments(dt, now) {
+      for (let i = fragments.length - 1; i >= 0; i--) {
+        const f = fragments[i];
+        if (!f.grounded) {
+          f.velocity.y -= FRAG_GRAVITY * dt;
+          f.mesh.position.addScaledVector(f.velocity, dt);
+          if (f.mesh.position.y <= f.halfSize) {
+            f.mesh.position.y = f.halfSize;
+            f.velocity.set(0, 0, 0);
+            f.grounded = true;
+          }
+        }
+        const age = now - f.spawnTime;
+        if (age > FRAG_FADE_START) {
+          const t = (age - FRAG_FADE_START) / (FRAG_LIFETIME - FRAG_FADE_START);
+          f.mesh.material.opacity = Math.max(0, 1 - t);
+        }
+        if (age > FRAG_LIFETIME) {
+          scene.remove(f.mesh);
+          f.mesh.geometry.dispose();
+          f.mesh.material.dispose();
+          fragments.splice(i, 1);
+        }
+      }
+    }
+
+    // ---------- Hareket güncelleme ----------
+    function circleHitsCollider(px, pz, obj) {
+      const c = obj.userData.collider;
+      if (!c) return false;
+      const closestX = Math.max(obj.position.x - c.halfX, Math.min(px, obj.position.x + c.halfX));
+      const closestZ = Math.max(obj.position.z - c.halfZ, Math.min(pz, obj.position.z + c.halfZ));
+      const dx = px - closestX;
+      const dz = pz - closestZ;
+      return dx * dx + dz * dz < PLAYER_RADIUS * PLAYER_RADIUS;
+    }
+
+    function canMoveTo(x, z) {
+      if (x < -BOUND || x > BOUND || z < -BOUND || z > BOUND) return false;
+      for (const obj of breakables) {
+        if (!obj.visible || obj.userData.broken) continue;
+        if (circleHitsCollider(x, z, obj)) return false;
+      }
+      return true;
+    }
+
+    function updateMovement(dt) {
+      if (!canControlPlayer()) {
+        isPlayerMoving = false;
+        return;
+      }
+      player.rotation.y = yaw;
+      camera.rotation.x = pitch;
+      camera.rotation.z = 0;
+
+      const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+      const right = new THREE.Vector3(-forward.z, 0, forward.x);
+
+      const move = new THREE.Vector3();
+      if (keys.w) move.add(forward);
+      if (keys.s) move.sub(forward);
+      if (keys.d) move.add(right);
+      if (keys.a) move.sub(right);
+      if (isTouchDevice) {
+        move.addScaledVector(forward, -moveInput.y);
+        move.addScaledVector(right, moveInput.x);
+      }
+      isPlayerMoving = move.lengthSq() > 0;
+      if (isPlayerMoving) {
+        move.normalize().multiplyScalar(MOVE_SPEED * dt);
+        const oldX = player.position.x;
+        const oldZ = player.position.z;
+        const targetX = oldX + move.x;
+        const targetZ = oldZ + move.z;
+
+        if (canMoveTo(targetX, targetZ)) {
+          player.position.x = targetX;
+          player.position.z = targetZ;
+        } else if (canMoveTo(targetX, oldZ)) {
+          player.position.x = targetX;
+        } else if (canMoveTo(oldX, targetZ)) {
+          player.position.z = targetZ;
+        }
+      }
+    }
+
+    function applyPickaxeIdlePose(dt) {
+      const sway = isPlayerMoving ? 9 : 2.2;
+      bobPhase += dt * sway;
+      const amp = isPlayerMoving ? 0.018 : 0.007;
+      const sideAmp = isPlayerMoving ? 0.01 : 0.003;
+      const rotAmp = isPlayerMoving ? 0.05 : 0.018;
+
+      pickaxe.position.set(
+        PICKAXE_POSE.x + Math.cos(bobPhase * 0.5) * sideAmp,
+        PICKAXE_POSE.y + Math.sin(bobPhase) * amp,
+        PICKAXE_POSE.z
+      );
+      pickaxe.rotation.set(
+        PICKAXE_POSE.rotX + Math.sin(bobPhase * 0.5) * rotAmp * 0.4,
+        PICKAXE_POSE.rotY,
+        PICKAXE_POSE.rotZ + Math.sin(bobPhase) * rotAmp
+      );
+    }
+
+    // ---------- Çekiç sallama & elde tutma animasyonu ----------
+    function updateViewmodel(dt) {
+      if (swingCooldown > 0) swingCooldown -= dt;
+
+      if (swingTime < 0) {
+        applyPickaxeIdlePose(dt);
+        return;
+      }
+
+      swingTime += dt;
+      const duration = PICKAXES[equippedPickaxe].duration;
+      const t = Math.min(swingTime / duration, 1);
+
+      if (t < 0.22) {
+        const w = t / 0.22;
+        pickaxe.rotation.x = PICKAXE_POSE.rotX + w * 0.3;
+        pickaxe.rotation.z = PICKAXE_POSE.rotZ - w * 0.1;
+        pickaxe.position.set(
+          PICKAXE_POSE.x - w * 0.02,
+          PICKAXE_POSE.y + w * 0.03,
+          PICKAXE_POSE.z - w * 0.07
+        );
+      } else if (t < 0.5) {
+        const w = (t - 0.22) / 0.28;
+        const strike = 1 - (1 - w) * (1 - w);
+        pickaxe.rotation.x = PICKAXE_POSE.rotX + 0.3 - strike * 1.15;
+        pickaxe.rotation.z = PICKAXE_POSE.rotZ - 0.1 + strike * 0.18;
+        pickaxe.position.set(
+          PICKAXE_POSE.x - 0.02 + strike * 0.03,
+          PICKAXE_POSE.y + 0.03 - strike * 0.06,
+          PICKAXE_POSE.z - 0.07 + strike * 0.2
+        );
+      } else {
+        const w = (t - 0.5) / 0.5;
+        const rec = w * w;
+        const endRotX = PICKAXE_POSE.rotX - 0.85;
+        const endRotZ = PICKAXE_POSE.rotZ + 0.08;
+        const endY = PICKAXE_POSE.y - 0.03;
+        const endZ = PICKAXE_POSE.z + 0.13;
+        pickaxe.rotation.x = endRotX + (PICKAXE_POSE.rotX - endRotX) * rec;
+        pickaxe.rotation.z = endRotZ + (PICKAXE_POSE.rotZ - endRotZ) * rec;
+        pickaxe.position.set(
+          PICKAXE_POSE.x,
+          endY + (PICKAXE_POSE.y - endY) * rec,
+          endZ + (PICKAXE_POSE.z - endZ) * rec
+        );
+      }
+
+      if (t >= 1) swingTime = -1;
+    }
+
+    function updateShake(dt) {
+      if (shakeTime <= 0) {
+        camera.position.set(0, EYE_HEIGHT, 0);
+        camera.rotation.z = 0;
+        return;
+      }
+      shakeTime += dt;
+      const duration = 0.1;
+      if (shakeTime >= duration) {
+        shakeTime = 0;
+        camera.position.set(0, EYE_HEIGHT, 0);
+        camera.rotation.z = 0;
+        return;
+      }
+      const intensity = (1 - shakeTime / duration) * 0.02;
+      camera.position.x = Math.sin(shakeTime * 90) * intensity;
+      camera.position.y = EYE_HEIGHT + Math.cos(shakeTime * 110) * intensity * 0.5;
+      camera.rotation.z = 0;
+    }
+
+    // ---------- HUD ----------
+    const timerEl = document.getElementById("timer");
+    const scoreEl = document.getElementById("score");
+    const coinsEl = document.getElementById("coins");
+    const startScreen = document.getElementById("start-screen");
+    const endScreen = document.getElementById("end-screen");
+    const endTitleEl = document.getElementById("end-title");
+    const finalScoreEl = document.getElementById("final-score");
+    const crosshairEl = document.getElementById("crosshair");
+    const touchControlsEl = document.getElementById("touch-controls");
+
+    function safeExitPointerLock() {
+      try {
+        if (document.pointerLockElement) document.exitPointerLock();
+      } catch (_) { /* Safari bazen desteklemez */ }
+    }
+
+    const overlayEls = () => [startScreen, endScreen, mathScreen, storeScreen];
+
+    function syncModalOpenClass() {
+      const anyOpen = overlayEls().some((el) => !el.classList.contains("hidden"));
+      document.body.classList.toggle("modal-open", anyOpen);
+    }
+
+    function setGameplayUiVisible(visible) {
+      renderer.domElement.style.pointerEvents = visible ? "auto" : "none";
+      renderer.domElement.style.zIndex = visible ? "0" : "-1";
+      crosshairEl.style.visibility = visible ? "visible" : "hidden";
+      if (!visible) mouseLookActive = false;
+      if (isTouchDevice) {
+        touchControlsEl.style.visibility = visible ? "visible" : "hidden";
+        touchControlsEl.style.pointerEvents = visible ? "auto" : "none";
+      }
+      document.getElementById("shop-btn-corner").style.pointerEvents = visible ? "auto" : "none";
+    }
+
+    function showOverlay(el) {
+      el.classList.remove("hidden");
+      el.style.display = "flex";
+      syncModalOpenClass();
+      setGameplayUiVisible(false);
+    }
+
+    function hideOverlay(el) {
+      el.classList.add("hidden");
+      el.style.display = "";
+      syncModalOpenClass();
+    }
+
+    function updateScoreHud() {
+      scoreEl.textContent = `Skor: ${score}`;
+    }
+    function updateTimerHud(timeLeft) {
+      const s = Math.max(0, Math.ceil(timeLeft));
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      timerEl.textContent = `Süre: ${mm}:${ss}`;
+    }
+    function updateCoinsHud() {
+      coinsEl.textContent = `Para: ${coins} 🪙`;
+    }
+    updateCoinsHud();
+
+    // ---------- Oyun durumu ----------
+    let gameState = "idle"; // idle | playing | mathQuiz | won | lost
+    let playStartTime = 0;
+
+    const mathScreen = document.getElementById("math-screen");
+    const mathTimerEl = document.getElementById("math-timer");
+    const mathProgressEl = document.getElementById("math-progress");
+    const mathQuestionEl = document.getElementById("math-question");
+    const mathOptionsEl = document.getElementById("math-options");
+    const mathFeedbackEl = document.getElementById("math-feedback");
+    let mathQuizEndTime = 0;
+    let mathCorrect = 0;
+    let mathLocked = false;
+    let currentMath = null;
+    let mathQuestionQueue = [];
+    const askedMathKeys = new Set();
+
+    function randInt(min, max) {
+      return min + Math.floor(Math.random() * (max - min + 1));
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function buildMathOptions(answer) {
+      const options = new Set([answer]);
+      let guard = 0;
+      while (options.size < 4 && guard++ < 40) {
+        const spread = answer <= 30 ? 6 : 12;
+        const wrong = answer + randInt(-spread, spread);
+        if (wrong >= 0 && wrong !== answer) options.add(wrong);
+      }
+      let bump = 1;
+      while (options.size < 4) {
+        const wrong = answer + bump;
+        if (wrong !== answer) options.add(wrong);
+        bump += 1;
+      }
+      return shuffle([...options]);
+    }
+
+    function buildOneMathQuestion() {
+      const type = randInt(0, 3);
+      let text, answer;
+
+      if (type === 0) {
+        const a = randInt(11, 89);
+        const b = randInt(11, 89);
+        text = `${a} + ${b} = ?`;
+        answer = a + b;
+      } else if (type === 1) {
+        const a = randInt(40, 99);
+        const b = randInt(11, a - 5);
+        text = `${a} − ${b} = ?`;
+        answer = a - b;
+      } else if (type === 2) {
+        const a = randInt(2, 9);
+        const b = randInt(2, 9);
+        text = `${a} × ${b} = ?`;
+        answer = a * b;
+      } else {
+        const divisor = randInt(2, 9);
+        const quotient = randInt(2, 9);
+        const dividend = divisor * quotient;
+        text = `${dividend} ÷ ${divisor} = ?`;
+        answer = quotient;
+      }
+
+      return { text, answer, options: buildMathOptions(answer) };
+    }
+
+    function generateMathQuestion() {
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const q = buildOneMathQuestion();
+        if (!askedMathKeys.has(q.text)) {
+          askedMathKeys.add(q.text);
+          return q;
+        }
+      }
+      const q = buildOneMathQuestion();
+      askedMathKeys.add(q.text);
+      return q;
+    }
+
+    function refillMathQueue(count = 8) {
+      for (let i = 0; i < count; i++) {
+        mathQuestionQueue.push(generateMathQuestion());
+      }
+    }
+
+    function showNextMathQuestion() {
+      if (gameState !== "mathQuiz") return;
+      if (mathQuestionQueue.length < 2) refillMathQueue(6);
+
+      mathLocked = false;
+      mathFeedbackEl.textContent = "";
+      currentMath = mathQuestionQueue.shift();
+      mathQuestionEl.textContent = currentMath.text;
+      mathOptionsEl.innerHTML = "";
+
+      for (const opt of currentMath.options) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = String(opt);
+        bindTap(btn, () => handleMathAnswer(opt, btn));
+        mathOptionsEl.appendChild(btn);
+      }
+    }
+
+    function handleMathAnswer(choice, btn) {
+      if (mathLocked || gameState !== "mathQuiz") return;
+      mathLocked = true;
+      const buttons = mathOptionsEl.querySelectorAll("button");
+      for (const b of buttons) b.disabled = true;
+
+      if (choice === currentMath.answer) {
+        btn.classList.add("correct");
+        mathCorrect++;
+        mathProgressEl.textContent = `Doğru: ${mathCorrect} / ${MATH_REQUIRED}`;
+        mathFeedbackEl.textContent = "Harika! ✅";
+        if (mathCorrect >= MATH_REQUIRED) {
+          setTimeout(() => finishMathQuiz(true), 600);
+        } else {
+          setTimeout(showNextMathQuestion, 700);
+        }
+      } else {
+        btn.classList.add("wrong");
+        for (const b of buttons) {
+          if (Number(b.textContent) === currentMath.answer) b.classList.add("correct");
+        }
+        mathFeedbackEl.textContent = `Doğru cevap: ${currentMath.answer}`;
+        setTimeout(showNextMathQuestion, 900);
+      }
+    }
+
+    function startMathQuiz() {
+      if (gameState !== "playing") return;
+      gameState = "mathQuiz";
+      safeExitPointerLock();
+      mathCorrect = 0;
+      mathLocked = false;
+      mathQuestionQueue = [];
+      askedMathKeys.clear();
+      refillMathQueue(10);
+      mathQuizEndTime = clock.elapsedTime + MATH_QUIZ_DURATION;
+      mathProgressEl.textContent = `Doğru: 0 / ${MATH_REQUIRED}`;
+      mathTimerEl.textContent = `Süre: ${MATH_QUIZ_DURATION}`;
+      mathFeedbackEl.textContent = "";
+      hideOverlay(endScreen);
+      showOverlay(mathScreen);
+      showNextMathQuestion();
+    }
+
+    function finishMathQuiz(forcedWin = false) {
+      if (gameState !== "mathQuiz") return;
+      hideOverlay(mathScreen);
+      const saved = forcedWin || mathCorrect >= MATH_REQUIRED;
+      endGame("lost", saved);
+    }
+
+    function updateMathQuiz(now) {
+      if (gameState !== "mathQuiz") return;
+      const left = Math.max(0, Math.ceil(mathQuizEndTime - now));
+      mathTimerEl.textContent = `Süre: ${left}`;
+      if (left <= 0) finishMathQuiz(false);
+    }
+
+    function resetGame() {
+      score = 0;
+      updateScoreHud();
+      updateTimerHud(GAME_DURATION);
+      for (const obj of breakables) {
+        const locked = obj.userData.unlockPickaxe !== undefined && !ownedPickaxes.includes(obj.userData.unlockPickaxe);
+        obj.visible = !locked;
+        obj.userData.broken = locked;
+        obj.userData.hitsTaken = 0;
+        obj.userData.hitsRequired = PICKAXES[equippedPickaxe].hitsPerObject;
+        obj.material.color.copy(obj.userData.originalColor);
+      }
+      for (const f of fragments) {
+        scene.remove(f.mesh);
+        f.mesh.geometry.dispose();
+        f.mesh.material.dispose();
+      }
+      fragments.length = 0;
+      for (const b of laserBeams) {
+        scene.remove(b.mesh);
+        b.mesh.geometry.dispose();
+        b.mesh.material.dispose();
+      }
+      laserBeams.length = 0;
+      if (catMesh) {
+        scene.remove(catMesh);
+        catMesh = null;
+      }
+      randomizeObjectPositions();
+      const spot = CAT_BOX_SPOTS[Math.floor(Math.random() * CAT_BOX_SPOTS.length)];
+      catBox.position.x = spot.x;
+      catBox.position.z = spot.z;
+      const catColor = CAT_BOX_COLORS[Math.floor(Math.random() * CAT_BOX_COLORS.length)];
+      catBox.userData.color = catColor;
+      catBox.userData.originalColor.setHex(catColor);
+      catBox.material.color.setHex(catColor);
+      player.position.set(0, 0, 0);
+      yaw = 0;
+      pitch = 0;
+      player.rotation.y = yaw;
+      camera.rotation.x = pitch;
+      camera.rotation.z = 0;
+      camera.position.set(0, EYE_HEIGHT, 0);
+      swingTime = -1;
+      swingCooldown = 0;
+      bobPhase = 0;
+      pickaxe.position.set(PICKAXE_POSE.x, PICKAXE_POSE.y, PICKAXE_POSE.z);
+      pickaxe.rotation.set(PICKAXE_POSE.rotX, PICKAXE_POSE.rotY, PICKAXE_POSE.rotZ);
+    }
+
+    function resumeAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    }
+
+    function startGame() {
+      resumeAudio();
+      resetGame();
+      gameState = "playing";
+      playStartTime = clock.elapsedTime;
+      hideOverlay(startScreen);
+      hideOverlay(endScreen);
+      hideOverlay(mathScreen);
+      setGameplayUiVisible(true);
+      if (isTouchDevice) {
+        isLocked = true;
+        mouseLookActive = false;
+      } else if (supportsPointerLock) {
+        safeRequestPointerLock();
+      } else {
+        mouseLookActive = true;
+      }
+    }
+
+    function endGame(result, coinsSaved = false) {
+      gameState = result;
+      safeExitPointerLock();
+      hideOverlay(mathScreen);
+      if (result === "won") {
+        endTitleEl.textContent = "Kazandın! 🐱";
+        finalScoreEl.innerHTML = `Kediyi kurtardın! Skorun: ${score} / ${getTotalObjects()}<br/><br/>Oyun şimdilik bitti, para toplamaya devam et!`;
+      } else if (coinsSaved) {
+        endTitleEl.textContent = "Süre Bitti!";
+        finalScoreEl.textContent = `Kedi kutuda kaldı ama ${MATH_REQUIRED} soruyu çözüp paranı korudun! 🎉 Skorun: ${score} / ${getTotalObjects()}`;
+      } else {
+        coins = 0;
+        updateCoinsHud();
+        saveProgress();
+        endTitleEl.textContent = "Süre Bitti!";
+        finalScoreEl.textContent = `Kedi kutuda kaldı... 😿 Yeterli soruyu çözemedin, paraların gitti! Skorun: ${score} / ${getTotalObjects()}`;
+      }
+      showOverlay(endScreen);
+    }
+
+    bindTap(document.getElementById("start-btn"), startGame);
+    bindTap(document.getElementById("restart-btn"), startGame);
+    bindTap(document.getElementById("shop-btn-start"), () => openStore(startScreen));
+    bindTap(document.getElementById("shop-btn-end"), () => openStore(endScreen));
+    bindTap(document.getElementById("shop-btn-corner"), () => {
+      if (gameState === "playing") {
+        storePauseTime = clock.elapsedTime;
+        safeExitPointerLock();
+      }
+      openStore(null);
+    });
+    bindTap(document.getElementById("store-close-btn"), () => {
+      hideOverlay(storeScreen);
+      if (storeReturnScreen) {
+        showOverlay(storeReturnScreen);
+      } else if (gameState === "playing") {
+        playStartTime += clock.elapsedTime - storePauseTime;
+        setGameplayUiVisible(true);
+        if (isTouchDevice) {
+          isLocked = true;
+        } else {
+          safeRequestPointerLock();
+        }
+      }
+    });
+
+    const clock = new THREE.Clock();
+
+    let hiddenSince = 0;
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        if (gameState === "playing" || gameState === "mathQuiz") {
+          hiddenSince = clock.elapsedTime;
+        }
+      } else if (hiddenSince > 0) {
+        const gap = clock.elapsedTime - hiddenSince;
+        if (gameState === "playing") playStartTime += gap;
+        else if (gameState === "mathQuiz") mathQuizEndTime += gap;
+        hiddenSince = 0;
+      }
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.1);
+      const now = clock.elapsedTime;
+
+      if (gameState === "playing" && !isStoreOpen()) {
+        updateMovement(dt);
+        updateViewmodel(dt);
+
+        const elapsed = now - playStartTime;
+        const timeLeft = GAME_DURATION - elapsed;
+        updateTimerHud(timeLeft);
+        if (timeLeft <= 0) startMathQuiz();
+      } else if (gameState === "mathQuiz") {
+        updateMathQuiz(now);
+      }
+
+      updateShake(dt);
+      updateFragments(dt, now);
+      updateLaserBeams(now);
+      renderer.render(scene, camera);
+    }
+    animate();
+    syncModalOpenClass();
+    setGameplayUiVisible(false);
+  </script>
+</body>
+</html>

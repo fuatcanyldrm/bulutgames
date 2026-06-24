@@ -2,7 +2,7 @@
   "name": "bulutgames",
   "private": true,
   "scripts": {
-    "predeploy": "mkdir -p public && cp index.html public/index.html",
+    "predeploy": "mkdir -p public/oyunlar/oda-kirma && cp index.html public/index.html && cp oyunlar/oda-kirma/index.html public/oyunlar/oda-kirma/index.html",
     "deploy": "wrangler deploy",
     "dev": "npm run predeploy && wrangler dev"
   },
