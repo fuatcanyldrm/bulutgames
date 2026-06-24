@@ -2,33 +2,50 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="format-detection" content="telephone=no" />
 <title>Oda Kırma Oyunu</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   .hidden { display: none; }
-  html, body { width: 100%; height: 100%; overflow: hidden; font-family: "Comic Sans MS", "Trebuchet MS", sans-serif; touch-action: none; }
-  canvas { display: block; touch-action: none; }
+  html, body {
+    width: 100%; height: 100%; min-height: 100%;
+    min-height: -webkit-fill-available;
+    overflow: hidden; font-family: "Comic Sans MS", "Trebuchet MS", sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  canvas {
+    display: block; position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; z-index: 0; touch-action: none;
+    pointer-events: none;
+  }
+  body.modal-open canvas {
+    z-index: -1;
+    pointer-events: none !important;
+  }
 
   #hud {
-    position: fixed; top: 16px; left: 16px;
+    position: fixed; top: max(16px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left));
     color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6);
-    font-size: 28px; font-weight: bold; z-index: 5;
+    font-size: 28px; font-weight: bold; z-index: 20;
     pointer-events: none;
   }
   #hud div { margin-bottom: 4px; }
 
   #top-right-hud {
-    position: fixed; top: 16px; right: 16px; z-index: 5;
+    position: fixed; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 20;
     display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
     color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6);
     font-size: 20px; font-weight: bold;
+    pointer-events: none;
   }
   #shop-btn-corner {
     font-family: inherit; font-size: 16px; font-weight: bold;
     color: #fff; background: linear-gradient(180deg, #6cd9c8, #1ba896);
     border: none; border-radius: 12px; padding: 8px 16px;
     cursor: pointer; box-shadow: 0 4px 0 #117a6c; pointer-events: auto;
+    -webkit-appearance: none; appearance: none; touch-action: manipulation;
   }
   #shop-btn-corner:active { transform: translateY(2px); box-shadow: 0 2px 0 #117a6c; }
 
@@ -36,23 +53,35 @@
     position: fixed; top: 50%; left: 50%;
     width: 12px; height: 12px; margin: -6px 0 0 -6px;
     border: 2px solid rgba(255,255,255,0.8);
-    border-radius: 50%; z-index: 5; pointer-events: none;
+    border-radius: 50%; z-index: 20; pointer-events: none;
   }
 
   .overlay {
-    position: fixed; inset: 0;
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(20, 20, 40, 0.75);
-    z-index: 10; overflow-y: auto; padding: 16px;
+    background: rgba(20, 20, 40, 0.85);
+    z-index: 1000; overflow-y: auto; padding: 16px;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+    isolation: isolate;
   }
-  .overlay.hidden { display: none; }
+  body.modal-open #touch-controls {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .overlay.hidden { display: none !important; }
+  .overlay:not(.hidden) { display: flex !important; }
 
   .panel {
     background: #fff7e0; border-radius: 24px;
-    padding: 36px 48px; text-align: center;
+    padding: 28px 24px; text-align: center;
     box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-    max-height: calc(100vh - 32px); overflow-y: auto;
-    max-width: 480px;
+    max-height: calc(100dvh - 32px); max-height: calc(100vh - 32px);
+    overflow-y: auto; max-width: min(480px, calc(100vw - 32px));
+    width: 100%;
+    position: relative; z-index: 101;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
   }
   .panel h1 { font-size: 40px; color: #e74c3c; margin-bottom: 16px; }
   .panel p { font-size: 20px; color: #444; margin-bottom: 24px; line-height: 1.5; }
@@ -60,8 +89,11 @@
     font-family: inherit; font-size: 28px; font-weight: bold;
     color: #fff; background: linear-gradient(180deg, #ff7e3e, #e65c00);
     border: none; border-radius: 16px; padding: 16px 48px;
-    cursor: pointer; box-shadow: 0 6px 0 #a84200;
+    min-height: 48px; cursor: pointer; box-shadow: 0 6px 0 #a84200;
     transition: transform 0.05s;
+    -webkit-appearance: none; appearance: none;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   .panel button:active { transform: translateY(4px); box-shadow: 0 2px 0 #a84200; }
   .panel button.secondary {
@@ -81,6 +113,7 @@
   .pickaxe-row button {
     font-size: 16px; padding: 8px 18px; border-radius: 10px;
     box-shadow: 0 4px 0 #a84200;
+    -webkit-appearance: none; appearance: none; touch-action: manipulation;
   }
   .pickaxe-row button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a84200; }
   .pickaxe-row button:disabled {
@@ -91,13 +124,13 @@
   }
 
   #touch-controls { display: none; }
-  #touch-controls.active { display: block; }
+  #touch-controls.active { display: block; z-index: 50; }
 
   #joystick-zone {
-    position: fixed; left: 24px; bottom: 24px;
+    position: fixed; left: max(24px, env(safe-area-inset-left)); bottom: max(24px, env(safe-area-inset-bottom));
     width: 120px; height: 120px; border-radius: 50%;
     background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.35);
-    z-index: 6; touch-action: none;
+    z-index: 50; touch-action: none;
   }
   #joystick-knob {
     position: absolute; left: 50%; top: 50%;
@@ -106,12 +139,12 @@
   }
 
   #swing-btn {
-    position: fixed; right: 28px; bottom: 28px;
+    position: fixed; right: max(28px, env(safe-area-inset-right)); bottom: max(28px, env(safe-area-inset-bottom));
     width: 96px; height: 96px; border-radius: 50%;
-    font-size: 40px; z-index: 6; border: none;
+    font-size: 40px; z-index: 50; border: none;
     background: linear-gradient(180deg, #ff7e3e, #e65c00);
     box-shadow: 0 6px 0 #a84200; color: #fff;
-    touch-action: none;
+    touch-action: manipulation; -webkit-appearance: none; appearance: none;
   }
   #swing-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a84200; }
 
@@ -129,14 +162,27 @@
   }
   .math-options button {
     font-size: 26px; padding: 16px 8px; border-radius: 14px;
-    box-shadow: 0 4px 0 #a84200;
+    min-height: 48px; box-shadow: 0 4px 0 #a84200;
+    -webkit-appearance: none; appearance: none;
+    pointer-events: auto; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent; cursor: pointer;
   }
   .math-options button.correct { background: linear-gradient(180deg, #6cd97e, #2ecc71); box-shadow: 0 4px 0 #1e9e53; }
   .math-options button.wrong { background: linear-gradient(180deg, #ff7675, #d63031); box-shadow: 0 4px 0 #a02929; }
   #math-feedback { font-size: 20px; font-weight: bold; min-height: 28px; color: #555; }
+  #load-error {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    display: none; align-items: center; justify-content: center;
+    background: #222; color: #fff; z-index: 200; padding: 24px; text-align: center;
+  }
+  #load-error.visible { display: flex; }
 </style>
 </head>
 <body>
+  <div id="load-error">
+    <p>Oyun yüklenemedi. Safari’yi güncelleyip sayfayı yenile.<br />İnternet bağlantını da kontrol et.</p>
+  </div>
+
   <div id="hud">
     <div id="timer">Süre: 00:60</div>
     <div id="score">Skor: 0</div>
@@ -212,11 +258,58 @@
     </div>
   </div>
 
-  <script type="importmap">
-    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
-  </script>
   <script type="module">
-    import * as THREE from "three";
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+    window.addEventListener("error", () => {
+      document.getElementById("load-error")?.classList.add("visible");
+    });
+    window.addEventListener("unhandledrejection", () => {
+      document.getElementById("load-error")?.classList.add("visible");
+    });
+
+    // ---------- Safari / platform tespiti ----------
+    const ua = navigator.userAgent;
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Edg|OPR|FxiOS/i.test(ua);
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const isMobileSafari = isSafari && isIOS;
+    const supportsPointerLock = "pointerLockElement" in document && !isIOS;
+
+    function loadStorage(key, fallback) {
+      try {
+        const v = localStorage.getItem(key);
+        return v === null ? fallback : v;
+      } catch {
+        return fallback;
+      }
+    }
+    function saveStorage(key, value) {
+      try { localStorage.setItem(key, value); } catch { /* Safari gizli mod */ }
+    }
+
+    function bindTap(el, handler) {
+      if (!el) return;
+      let lastTap = 0;
+      const run = (e) => {
+        const now = Date.now();
+        if (now - lastTap < 300) return;
+        lastTap = now;
+        handler(e);
+      };
+      const onActivate = (e) => {
+        if (e.type === "pointerup" && e.pointerType === "mouse" && e.button !== 0) return;
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        run(e);
+      };
+      if (window.PointerEvent) {
+        el.addEventListener("pointerup", onActivate);
+      } else {
+        el.addEventListener("touchend", onActivate, { passive: false });
+        el.addEventListener("click", onActivate);
+      }
+    }
 
     // ---------- Sabitler ----------
     const ROOM_SIZE = 18;
@@ -256,19 +349,38 @@
     player.add(camera);
     camera.position.set(0, EYE_HEIGHT, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !isMobileSafari,
+      alpha: false,
+      powerPreference: isMobileSafari ? "low-power" : "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobileSafari ? 1.5 : 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
-    document.body.appendChild(renderer.domElement);
+    document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+    renderer.domElement.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+    });
+    renderer.domElement.addEventListener("webglcontextrestored", () => {
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    function resizeRenderer() {
+      const w = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h, false);
+    }
+    window.addEventListener("resize", resizeRenderer);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", resizeRenderer);
+      window.visualViewport.addEventListener("scroll", resizeRenderer);
+    }
 
     // ---------- Işıklar ----------
     scene.add(new THREE.HemisphereLight(0xddeeff, 0x554433, 0.5));
@@ -277,7 +389,7 @@
     dirLight.position.set(14, 20, 14);
     dirLight.target.position.set(0, 0, 0);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(2048, 2048);
+    dirLight.shadow.mapSize.set(isMobileSafari ? 1024 : 2048, isMobileSafari ? 1024 : 2048);
     dirLight.shadow.camera.near = 1;
     dirLight.shadow.camera.far = 50;
     dirLight.shadow.camera.left = -14;
@@ -568,10 +680,10 @@
     let isPlayerMoving = false;
 
     // ---------- Para & Mağaza ----------
-    let coins = Number(localStorage.getItem("okk_coins")) || 0;
-    let ownedPickaxes = JSON.parse(localStorage.getItem("okk_owned") || "[0]");
-    let equippedPickaxe = Number(localStorage.getItem("okk_equipped")) || 0;
-    let catsFound = Number(localStorage.getItem("okk_cats_found")) || 0;
+    let coins = Number(loadStorage("okk_coins", "0")) || 0;
+    let ownedPickaxes = JSON.parse(loadStorage("okk_owned", "[0]"));
+    let equippedPickaxe = Number(loadStorage("okk_equipped", "0")) || 0;
+    let catsFound = Number(loadStorage("okk_cats_found", "0")) || 0;
 
     const catCountEl = document.getElementById("cat-count");
     function updateCatCountHud() {
@@ -580,9 +692,9 @@
     updateCatCountHud();
 
     function saveProgress() {
-      localStorage.setItem("okk_coins", String(coins));
-      localStorage.setItem("okk_owned", JSON.stringify(ownedPickaxes));
-      localStorage.setItem("okk_equipped", String(equippedPickaxe));
+      saveStorage("okk_coins", String(coins));
+      saveStorage("okk_owned", JSON.stringify(ownedPickaxes));
+      saveStorage("okk_equipped", String(equippedPickaxe));
     }
 
     function addCoins(amount) {
@@ -625,11 +737,11 @@
           btn.disabled = true;
         } else if (ownedPickaxes.includes(i)) {
           btn.textContent = "Kullan";
-          btn.addEventListener("click", () => { equipPickaxe(i); renderStore(); });
+          bindTap(btn, () => { equipPickaxe(i); renderStore(); });
         } else {
           btn.textContent = `Satın Al (${px.price} ₺)`;
           btn.disabled = coins < px.price;
-          btn.addEventListener("click", () => {
+          bindTap(btn, () => {
             if (coins < px.price) return;
             coins -= px.price;
             ownedPickaxes.push(i);
@@ -648,8 +760,8 @@
     function openStore(fromScreen) {
       storeReturnScreen = fromScreen;
       renderStore();
-      if (fromScreen) fromScreen.classList.add("hidden");
-      storeScreen.classList.remove("hidden");
+      if (fromScreen) hideOverlay(fromScreen);
+      showOverlay(storeScreen);
     }
 
     function isStoreOpen() {
@@ -660,44 +772,47 @@
       return !mathScreen.classList.contains("hidden");
     }
 
-    document.getElementById("shop-btn-start").addEventListener("click", () => openStore(startScreen));
-    document.getElementById("shop-btn-end").addEventListener("click", () => openStore(endScreen));
-
     let storePauseTime = 0;
-    document.getElementById("shop-btn-corner").addEventListener("click", () => {
-      if (gameState === "playing") {
-        storePauseTime = clock.elapsedTime;
-        document.exitPointerLock();
-      }
-      openStore(null);
-    });
-
-    document.getElementById("store-close-btn").addEventListener("click", () => {
-      storeScreen.classList.add("hidden");
-      if (storeReturnScreen) {
-        storeReturnScreen.classList.remove("hidden");
-      } else if (gameState === "playing") {
-        playStartTime += clock.elapsedTime - storePauseTime;
-        if (isTouchDevice) {
-          isLocked = true;
-        } else {
-          renderer.domElement.requestPointerLock();
-        }
-      }
-    });
 
     // ---------- Hareket & bakış kontrolleri ----------
-    let yaw = 0; // oyuncunun baktığı/yürüdüğü yön (player gövdesi)
-    let pitch = 0; // yukarı/aşağı bakış (kamera)
+    let yaw = 0;
+    let pitch = 0;
     const PITCH_LIMIT = Math.PI / 2 - 0.05;
     let isLocked = false;
+    let mouseLookActive = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
     const keys = { w: false, a: false, s: false, d: false };
 
-    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     if (isTouchDevice) {
       document.getElementById("touch-controls").classList.add("active");
       document.getElementById("desktop-instructions").classList.add("hidden");
       document.getElementById("touch-instructions").classList.remove("hidden");
+    }
+
+    function canControlPlayer() {
+      return isTouchDevice || isLocked || mouseLookActive;
+    }
+
+    function safeRequestPointerLock() {
+      if (!supportsPointerLock) {
+        mouseLookActive = true;
+        return;
+      }
+      try {
+        const req = renderer.domElement.requestPointerLock();
+        if (req && typeof req.catch === "function") {
+          req.catch(() => { mouseLookActive = true; });
+        }
+      } catch {
+        mouseLookActive = true;
+      }
+    }
+
+    function applyLookDelta(dx, dy, sensitivity) {
+      yaw -= dx * sensitivity;
+      pitch -= dy * sensitivity;
+      pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
     }
 
     document.addEventListener("keydown", (e) => {
@@ -712,25 +827,39 @@
 
     document.addEventListener("pointerlockchange", () => {
       isLocked = document.pointerLockElement === renderer.domElement;
+      if (isLocked) mouseLookActive = false;
+    });
+    document.addEventListener("pointerlockerror", () => {
+      mouseLookActive = true;
     });
 
     document.addEventListener("mousemove", (e) => {
-      if (!isLocked || gameState !== "playing") return;
-      const sensitivity = 0.0025;
-      yaw -= e.movementX * sensitivity;
-      pitch -= e.movementY * sensitivity;
-      pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
+      if (gameState !== "playing" || isStoreOpen() || isMathQuizOpen()) return;
+      if (isLocked) {
+        applyLookDelta(e.movementX, e.movementY, 0.0025);
+      } else if (mouseLookActive && e.buttons === 1) {
+        applyLookDelta(e.movementX, e.movementY, 0.0025);
+      }
     });
 
     renderer.domElement.addEventListener("mousedown", (e) => {
-      if (isTouchDevice) return;
-      if (gameState === "playing" && !isLocked) {
-        renderer.domElement.requestPointerLock();
+      if (isTouchDevice || gameState !== "playing") return;
+      if (supportsPointerLock && !isLocked) {
+        safeRequestPointerLock();
         return;
       }
-      if (gameState === "playing" && isLocked && e.button === 0) {
+      if (!supportsPointerLock || mouseLookActive) {
+        mouseLookActive = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        if (e.button === 0) trySwing();
+      } else if (isLocked && e.button === 0) {
         trySwing();
       }
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (!isLocked && !supportsPointerLock) mouseLookActive = false;
     });
 
     // ---------- Dokunmatik kontroller (tablet) ----------
@@ -788,27 +917,35 @@
     let lastLookX = 0;
     let lastLookY = 0;
 
+    function isTouchOnUiControls(clientX, clientY) {
+      const el = document.elementFromPoint(clientX, clientY);
+      return el && (
+        el.closest("#joystick-zone") ||
+        el.closest("#swing-btn") ||
+        el.closest("#shop-btn-corner") ||
+        el.closest(".overlay:not(.hidden)")
+      );
+    }
+
     renderer.domElement.addEventListener("touchstart", (e) => {
       if (gameState !== "playing" || lookTouchId !== null) return;
       const touch = e.changedTouches[0];
+      if (isTouchOnUiControls(touch.clientX, touch.clientY)) return;
       lookTouchId = touch.identifier;
       lastLookX = touch.clientX;
       lastLookY = touch.clientY;
-    });
+    }, { passive: true });
     renderer.domElement.addEventListener("touchmove", (e) => {
-      if (gameState !== "playing" || isStoreOpen()) return;
+      if (gameState !== "playing" || isStoreOpen() || isMathQuizOpen()) return;
       for (const touch of e.changedTouches) {
         if (touch.identifier !== lookTouchId) continue;
         const dx = touch.clientX - lastLookX;
         const dy = touch.clientY - lastLookY;
         lastLookX = touch.clientX;
         lastLookY = touch.clientY;
-        const sensitivity = 0.005;
-        yaw -= dx * sensitivity;
-        pitch -= dy * sensitivity;
-        pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
+        applyLookDelta(dx, dy, 0.005);
       }
-    });
+    }, { passive: true });
     function handleLookEnd(e) {
       for (const touch of e.changedTouches) {
         if (touch.identifier === lookTouchId) lookTouchId = null;
@@ -817,26 +954,26 @@
     renderer.domElement.addEventListener("touchend", handleLookEnd);
     renderer.domElement.addEventListener("touchcancel", handleLookEnd);
 
-    document.getElementById("swing-btn").addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      trySwing();
-    });
+    bindTap(document.getElementById("swing-btn"), () => trySwing());
 
     // ---------- Ses ----------
     let audioCtx = null;
     function playThud(startFreq = 140) {
       if (!audioCtx) return;
-      const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(startFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(startFreq / 3.5, now + 0.15);
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.16);
+      try {
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(startFreq / 3.5, 0.001), now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+      } catch { /* Safari ses kısıtı */ }
     }
 
     // ---------- Kamera sallanma (shake) ----------
@@ -849,6 +986,7 @@
 
     function trySwing() {
       if (gameState !== "playing" || swingCooldown > 0 || isStoreOpen() || isMathQuizOpen()) return;
+      resumeAudio();
       swingTime = 0;
       swingCooldown = PICKAXES[equippedPickaxe].cooldown;
 
@@ -937,7 +1075,7 @@
         catMesh.position.set(obj.position.x, 0, obj.position.z);
         scene.add(catMesh);
         catsFound++;
-        localStorage.setItem("okk_cats_found", String(catsFound));
+        saveStorage("okk_cats_found", String(catsFound));
         updateCatCountHud();
         endGame("won");
       }
@@ -1021,7 +1159,7 @@
     }
 
     function updateMovement(dt) {
-      if (!isLocked && !isTouchDevice) {
+      if (!canControlPlayer()) {
         isPlayerMoving = false;
         return;
       }
@@ -1158,6 +1296,46 @@
     const endScreen = document.getElementById("end-screen");
     const endTitleEl = document.getElementById("end-title");
     const finalScoreEl = document.getElementById("final-score");
+    const crosshairEl = document.getElementById("crosshair");
+    const touchControlsEl = document.getElementById("touch-controls");
+
+    function safeExitPointerLock() {
+      try {
+        if (document.pointerLockElement) document.exitPointerLock();
+      } catch (_) { /* Safari bazen desteklemez */ }
+    }
+
+    const overlayEls = () => [startScreen, endScreen, mathScreen, storeScreen];
+
+    function syncModalOpenClass() {
+      const anyOpen = overlayEls().some((el) => !el.classList.contains("hidden"));
+      document.body.classList.toggle("modal-open", anyOpen);
+    }
+
+    function setGameplayUiVisible(visible) {
+      renderer.domElement.style.pointerEvents = visible ? "auto" : "none";
+      renderer.domElement.style.zIndex = visible ? "0" : "-1";
+      crosshairEl.style.visibility = visible ? "visible" : "hidden";
+      if (!visible) mouseLookActive = false;
+      if (isTouchDevice) {
+        touchControlsEl.style.visibility = visible ? "visible" : "hidden";
+        touchControlsEl.style.pointerEvents = visible ? "auto" : "none";
+      }
+      document.getElementById("shop-btn-corner").style.pointerEvents = visible ? "auto" : "none";
+    }
+
+    function showOverlay(el) {
+      el.classList.remove("hidden");
+      el.style.display = "flex";
+      syncModalOpenClass();
+      setGameplayUiVisible(false);
+    }
+
+    function hideOverlay(el) {
+      el.classList.add("hidden");
+      el.style.display = "";
+      syncModalOpenClass();
+    }
 
     function updateScoreHud() {
       scoreEl.textContent = `Skor: ${score}`;
@@ -1282,7 +1460,7 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = String(opt);
-        btn.addEventListener("click", () => handleMathAnswer(opt, btn));
+        bindTap(btn, () => handleMathAnswer(opt, btn));
         mathOptionsEl.appendChild(btn);
       }
     }
@@ -1316,7 +1494,7 @@
     function startMathQuiz() {
       if (gameState !== "playing") return;
       gameState = "mathQuiz";
-      document.exitPointerLock();
+      safeExitPointerLock();
       mathCorrect = 0;
       mathLocked = false;
       mathQuestionQueue = [];
@@ -1326,14 +1504,14 @@
       mathProgressEl.textContent = `Doğru: 0 / ${MATH_REQUIRED}`;
       mathTimerEl.textContent = `Süre: ${MATH_QUIZ_DURATION}`;
       mathFeedbackEl.textContent = "";
-      endScreen.classList.add("hidden");
-      mathScreen.classList.remove("hidden");
+      hideOverlay(endScreen);
+      showOverlay(mathScreen);
       showNextMathQuestion();
     }
 
     function finishMathQuiz(forcedWin = false) {
       if (gameState !== "mathQuiz") return;
-      mathScreen.classList.add("hidden");
+      hideOverlay(mathScreen);
       const saved = forcedWin || mathCorrect >= MATH_REQUIRED;
       endGame("lost", saved);
     }
@@ -1395,24 +1573,34 @@
       pickaxe.rotation.set(PICKAXE_POSE.rotX, PICKAXE_POSE.rotY, PICKAXE_POSE.rotZ);
     }
 
-    function startGame() {
+    function resumeAudio() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    }
+
+    function startGame() {
+      resumeAudio();
       resetGame();
       gameState = "playing";
       playStartTime = clock.elapsedTime;
-      startScreen.classList.add("hidden");
-      endScreen.classList.add("hidden");
+      hideOverlay(startScreen);
+      hideOverlay(endScreen);
+      hideOverlay(mathScreen);
+      setGameplayUiVisible(true);
       if (isTouchDevice) {
         isLocked = true;
+        mouseLookActive = false;
+      } else if (supportsPointerLock) {
+        safeRequestPointerLock();
       } else {
-        renderer.domElement.requestPointerLock();
+        mouseLookActive = true;
       }
     }
 
     function endGame(result, coinsSaved = false) {
       gameState = result;
-      document.exitPointerLock();
-      mathScreen.classList.add("hidden");
+      safeExitPointerLock();
+      hideOverlay(mathScreen);
       if (result === "won") {
         endTitleEl.textContent = "Kazandın! 🐱";
         finalScoreEl.innerHTML = `Kediyi kurtardın! Skorun: ${score} / ${getTotalObjects()}<br/><br/>Oyun şimdilik bitti, para toplamaya devam et!`;
@@ -1426,14 +1614,50 @@
         endTitleEl.textContent = "Süre Bitti!";
         finalScoreEl.textContent = `Kedi kutuda kaldı... 😿 Yeterli soruyu çözemedin, paraların gitti! Skorun: ${score} / ${getTotalObjects()}`;
       }
-      endScreen.classList.remove("hidden");
+      showOverlay(endScreen);
     }
 
-    document.getElementById("start-btn").addEventListener("click", startGame);
-    document.getElementById("restart-btn").addEventListener("click", startGame);
+    bindTap(document.getElementById("start-btn"), startGame);
+    bindTap(document.getElementById("restart-btn"), startGame);
+    bindTap(document.getElementById("shop-btn-start"), () => openStore(startScreen));
+    bindTap(document.getElementById("shop-btn-end"), () => openStore(endScreen));
+    bindTap(document.getElementById("shop-btn-corner"), () => {
+      if (gameState === "playing") {
+        storePauseTime = clock.elapsedTime;
+        safeExitPointerLock();
+      }
+      openStore(null);
+    });
+    bindTap(document.getElementById("store-close-btn"), () => {
+      hideOverlay(storeScreen);
+      if (storeReturnScreen) {
+        showOverlay(storeReturnScreen);
+      } else if (gameState === "playing") {
+        playStartTime += clock.elapsedTime - storePauseTime;
+        setGameplayUiVisible(true);
+        if (isTouchDevice) {
+          isLocked = true;
+        } else {
+          safeRequestPointerLock();
+        }
+      }
+    });
 
-    // ---------- Ana döngü ----------
     const clock = new THREE.Clock();
+
+    let hiddenSince = 0;
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        if (gameState === "playing" || gameState === "mathQuiz") {
+          hiddenSince = clock.elapsedTime;
+        }
+      } else if (hiddenSince > 0) {
+        const gap = clock.elapsedTime - hiddenSince;
+        if (gameState === "playing") playStartTime += gap;
+        else if (gameState === "mathQuiz") mathQuizEndTime += gap;
+        hiddenSince = 0;
+      }
+    });
 
     function animate() {
       requestAnimationFrame(animate);
@@ -1458,6 +1682,8 @@
       renderer.render(scene, camera);
     }
     animate();
+    syncModalOpenClass();
+    setGameplayUiVisible(false);
   </script>
 </body>
 </html>

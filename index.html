@@ -18,6 +18,11 @@
   canvas {
     display: block; position: fixed; top: 0; left: 0;
     width: 100%; height: 100%; z-index: 0; touch-action: none;
+    pointer-events: none;
+  }
+  body.modal-open canvas {
+    z-index: -1;
+    pointer-events: none !important;
   }
 
   #hud {
@@ -33,6 +38,7 @@
     display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
     color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.6);
     font-size: 20px; font-weight: bold;
+    pointer-events: none;
   }
   #shop-btn-corner {
     font-family: inherit; font-size: 16px; font-weight: bold;
@@ -54,9 +60,14 @@
     position: fixed; top: 0; right: 0; bottom: 0; left: 0;
     display: flex; align-items: center; justify-content: center;
     background: rgba(20, 20, 40, 0.85);
-    z-index: 100; overflow-y: auto; padding: 16px;
+    z-index: 1000; overflow-y: auto; padding: 16px;
     pointer-events: auto; touch-action: manipulation;
     -webkit-overflow-scrolling: touch;
+    isolation: isolate;
+  }
+  body.modal-open #touch-controls {
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
   .overlay.hidden { display: none !important; }
   .overlay:not(.hidden) { display: flex !important; }
@@ -78,10 +89,11 @@
     font-family: inherit; font-size: 28px; font-weight: bold;
     color: #fff; background: linear-gradient(180deg, #ff7e3e, #e65c00);
     border: none; border-radius: 16px; padding: 16px 48px;
-    cursor: pointer; box-shadow: 0 6px 0 #a84200;
+    min-height: 48px; cursor: pointer; box-shadow: 0 6px 0 #a84200;
     transition: transform 0.05s;
     -webkit-appearance: none; appearance: none;
     pointer-events: auto; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   .panel button:active { transform: translateY(4px); box-shadow: 0 2px 0 #a84200; }
   .panel button.secondary {
@@ -150,9 +162,10 @@
   }
   .math-options button {
     font-size: 26px; padding: 16px 8px; border-radius: 14px;
-    box-shadow: 0 4px 0 #a84200;
+    min-height: 48px; box-shadow: 0 4px 0 #a84200;
     -webkit-appearance: none; appearance: none;
     pointer-events: auto; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent; cursor: pointer;
   }
   .math-options button.correct { background: linear-gradient(180deg, #6cd97e, #2ecc71); box-shadow: 0 4px 0 #1e9e53; }
   .math-options button.wrong { background: linear-gradient(180deg, #ff7675, #d63031); box-shadow: 0 4px 0 #a02929; }
@@ -280,14 +293,22 @@
       let lastTap = 0;
       const run = (e) => {
         const now = Date.now();
-        if (now - lastTap < 400) return;
+        if (now - lastTap < 300) return;
         lastTap = now;
-        e.preventDefault();
-        e.stopPropagation();
         handler(e);
       };
-      el.addEventListener("click", run);
-      el.addEventListener("touchend", run, { passive: false });
+      const onActivate = (e) => {
+        if (e.type === "pointerup" && e.pointerType === "mouse" && e.button !== 0) return;
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        run(e);
+      };
+      if (window.PointerEvent) {
+        el.addEventListener("pointerup", onActivate);
+      } else {
+        el.addEventListener("touchend", onActivate, { passive: false });
+        el.addEventListener("click", onActivate);
+      }
     }
 
     // ---------- Sabitler ----------
@@ -339,7 +360,7 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
-    document.body.appendChild(renderer.domElement);
+    document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
     renderer.domElement.addEventListener("webglcontextlost", (e) => {
       e.preventDefault();
@@ -1284,25 +1305,36 @@
       } catch (_) { /* Safari bazen desteklemez */ }
     }
 
+    const overlayEls = () => [startScreen, endScreen, mathScreen, storeScreen];
+
+    function syncModalOpenClass() {
+      const anyOpen = overlayEls().some((el) => !el.classList.contains("hidden"));
+      document.body.classList.toggle("modal-open", anyOpen);
+    }
+
     function setGameplayUiVisible(visible) {
       renderer.domElement.style.pointerEvents = visible ? "auto" : "none";
+      renderer.domElement.style.zIndex = visible ? "0" : "-1";
       crosshairEl.style.visibility = visible ? "visible" : "hidden";
       if (!visible) mouseLookActive = false;
       if (isTouchDevice) {
         touchControlsEl.style.visibility = visible ? "visible" : "hidden";
         touchControlsEl.style.pointerEvents = visible ? "auto" : "none";
       }
+      document.getElementById("shop-btn-corner").style.pointerEvents = visible ? "auto" : "none";
     }
 
     function showOverlay(el) {
       el.classList.remove("hidden");
       el.style.display = "flex";
+      syncModalOpenClass();
       setGameplayUiVisible(false);
     }
 
     function hideOverlay(el) {
       el.classList.add("hidden");
       el.style.display = "";
+      syncModalOpenClass();
     }
 
     function updateScoreHud() {
@@ -1650,6 +1682,7 @@
       renderer.render(scene, camera);
     }
     animate();
+    syncModalOpenClass();
     setGameplayUiVisible(false);
   </script>
 </body>
