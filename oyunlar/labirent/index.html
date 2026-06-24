@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Labirent Puzzle — Bulut Games</title>
+    <link rel="stylesheet" href="/styles/main.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="start-screen" class="overlay visible">
+        <div class="panel">
+          <h1>Labirent Puzzle</h1>
+          <p>
+            Beş büyük dünyada labirentleri keşfet, puzzle parçalarını topla ve birleştir.
+            Her seviyede farklı bir puzzle ve iki sayfalık hikâye seni bekliyor.
+          </p>
+          <ul class="level-list">
+            <li>Seviye 1 — 10 parça · Ejderha Kalesi</li>
+            <li>Seviye 2 — 25 parça · Büyülü Orman</li>
+            <li>Seviye 3 — 50 parça · Sualtı Krallığı</li>
+            <li>Seviye 4 — 100 parça · Gökyüzü Şatosu</li>
+            <li>Seviye 5 — 250 parça · Kozmik Taht</li>
+          </ul>
+          <button id="btn-start" class="btn-primary">Oyuna Başla</button>
+          <button id="btn-reset-start" class="btn-secondary btn-reset">Baştan Başla</button>
+          <p style="margin-top:1rem;font-size:0.9rem;">
+            <a href="/" style="color:var(--accent-glow);text-decoration:none;font-weight:600;">← Ana sayfa</a>
+          </p>
+        </div>
+      </div>
+
+      <div id="maze-container"></div>
+
+      <div id="hud" class="hud hidden">
+        <div class="hud-item">
+          <span class="hud-label">Seviye</span>
+          <span id="hud-level" class="hud-value">Sv.1</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Süre</span>
+          <span id="timer" class="hud-value">60</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Parça</span>
+          <span id="piece-count" class="hud-value">0/10</span>
+        </div>
+        <p id="maze-hint" class="hud-hint">WASD veya ok tuşları ile hareket et</p>
+        <button id="btn-reset-hud" class="btn-reset-hud" type="button">Baştan Başla</button>
+      </div>
+
+      <div id="assembly-screen" class="overlay hidden">
+        <div class="panel panel-wide panel-scroll">
+          <h2 id="assembly-title">Birleştirme Masası</h2>
+          <p id="assembly-status">Topladığın parçaları doğru yerlere sürükle.</p>
+          <div id="puzzle-board-wrap" class="puzzle-board-wrap">
+            <div id="puzzle-board"></div>
+          </div>
+          <div id="puzzle-inventory" class="puzzle-inventory"></div>
+          <div class="panel-actions">
+            <button id="btn-back-maze" class="btn-secondary">Labirente Dön</button>
+            <button id="btn-reset-assembly" class="btn-secondary btn-reset" type="button">Baştan Başla</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="entrance-screen" class="overlay hidden">
+        <div class="panel">
+          <h2>Labirent Girişi Seç</h2>
+          <p>Bilmeceyi geçtin. Labirente hangi kapıdan girmek istersin?</p>
+          <div id="entrance-options" class="entrance-options"></div>
+        </div>
+      </div>
+
+      <div id="riddle-screen" class="overlay hidden">
+        <div class="panel">
+          <h2>Bilmece Kapısı</h2>
+          <p id="riddle-text"></p>
+          <div id="riddle-options" class="riddle-options"></div>
+          <p id="riddle-attempts" class="attempts"></p>
+          <p id="riddle-feedback" class="feedback"></p>
+        </div>
+      </div>
+
+      <div id="story-screen" class="overlay hidden">
+        <div class="panel panel-story">
+          <h2 id="story-title"></h2>
+          <p id="story-page" class="story-page-indicator"></p>
+          <div id="story-body" class="story-body"></div>
+          <div class="story-nav">
+            <button id="btn-story-prev" class="btn-secondary">← Önceki Sayfa</button>
+            <button id="btn-story-next" class="btn-secondary">Sonraki Sayfa →</button>
+            <button id="btn-story-continue" class="btn-primary" style="display:none">Sonraki Seviyeye Geç</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="win-screen" class="overlay hidden">
+        <div class="panel">
+          <h2>Macera Tamamlandı!</h2>
+          <p>Beş dünyanın puzzle'ını çözdün. Ejderha kalesinden kozmik tahta — tüm hikâye senin.</p>
+          <button id="btn-play-again" class="btn-primary">Tekrar Oyna</button>
+        </div>
+      </div>
+
+      <div id="gameover-screen" class="overlay hidden">
+        <div class="panel">
+          <h2>Oyun Bitti</h2>
+          <p>Bilmece kapısı seni durdurdu. Üç deneme hakkın tükendi.</p>
+          <button id="btn-restart" class="btn-primary">Baştan Başla</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
