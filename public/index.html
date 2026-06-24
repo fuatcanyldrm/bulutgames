@@ -10,15 +10,16 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   .hidden { display: none; }
   html, body {
-    width: 100%; height: 100%; min-height: 100%;
-    min-height: -webkit-fill-available;
+    position: fixed; inset: 0;
+    width: 100%; height: 100%; height: 100dvh;
+    min-height: 100dvh; min-height: -webkit-fill-available;
     overflow: hidden; font-family: "Comic Sans MS", "Trebuchet MS", sans-serif;
     -webkit-text-size-adjust: 100%;
+    background: #222233;
   }
   canvas {
     display: block; position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%; z-index: 0; touch-action: none;
-    pointer-events: none;
+    touch-action: none; pointer-events: none;
   }
   body.modal-open canvas {
     z-index: -1;
@@ -366,20 +367,48 @@
       e.preventDefault();
     });
     renderer.domElement.addEventListener("webglcontextrestored", () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      scheduleResize();
     });
 
-    function resizeRenderer() {
-      const w = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h, false);
+    function getViewportSize() {
+      const vv = window.visualViewport;
+      return {
+        width: vv ? vv.width : window.innerWidth,
+        height: vv ? vv.height : window.innerHeight,
+        offsetTop: vv ? vv.offsetTop : 0,
+        offsetLeft: vv ? vv.offsetLeft : 0,
+      };
     }
-    window.addEventListener("resize", resizeRenderer);
+
+    function resizeRenderer() {
+      const { width, height, offsetTop, offsetLeft } = getViewportSize();
+      const canvas = renderer.domElement;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.style.top = `${offsetTop}px`;
+      canvas.style.left = `${offsetLeft}px`;
+      canvas.style.zIndex = canvas.style.pointerEvents === "auto" ? "0" : "-1";
+    }
+
+    function scheduleResize() {
+      resizeRenderer();
+      requestAnimationFrame(resizeRenderer);
+      setTimeout(resizeRenderer, 100);
+      setTimeout(resizeRenderer, 350);
+    }
+
+    scheduleResize();
+    window.addEventListener("resize", scheduleResize);
+    window.addEventListener("orientationchange", scheduleResize);
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", resizeRenderer);
-      window.visualViewport.addEventListener("scroll", resizeRenderer);
+      window.visualViewport.addEventListener("resize", scheduleResize);
+      window.visualViewport.addEventListener("scroll", scheduleResize);
+    }
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener("change", scheduleResize);
     }
 
     // ---------- Işıklar ----------
