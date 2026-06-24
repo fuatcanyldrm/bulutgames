@@ -50,10 +50,116 @@ export class MazeScene {
     this.pieceCount = 10;
     this.staticCanvas = null;
     this.staticCtx = null;
+    this.touchDx = 0;
+    this.touchDz = 0;
+    this.touchRoot = null;
+    this._touchHandlers = null;
 
     this._onKeyDown = (e) => { this.keys[e.code] = true; };
     this._onKeyUp = (e) => { this.keys[e.code] = false; };
     this._onResize = () => this.resize();
+  }
+
+  _isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+
+  setupTouchControls() {
+    if (!this._isTouchDevice() || this.touchRoot) return;
+
+    this.touchRoot = document.createElement('div');
+    this.touchRoot.className = 'maze-touch-controls';
+    this.touchRoot.innerHTML = `
+      <div class="maze-joystick-zone" aria-hidden="true">
+        <div class="maze-joystick-knob"></div>
+      </div>
+    `;
+    document.getElementById('app').appendChild(this.touchRoot);
+
+    const zone = this.touchRoot.querySelector('.maze-joystick-zone');
+    const knob = this.touchRoot.querySelector('.maze-joystick-knob');
+    const maxR = 42;
+    let activePointer = null;
+
+    const updateFromPoint = (clientX, clientY) => {
+      const rect = zone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let dx = clientX - cx;
+      let dy = clientY - cy;
+      const dist = Math.hypot(dx, dy);
+      if (dist > maxR) {
+        dx = (dx / dist) * maxR;
+        dy = (dy / dist) * maxR;
+      }
+      knob.style.transform = `translate(${dx}px, ${dy}px)`;
+      this.touchDx = dist > 10 ? dx / maxR : 0;
+      this.touchDz = dist > 10 ? dy / maxR : 0;
+    };
+
+    const reset = () => {
+      activePointer = null;
+      this.touchDx = 0;
+      this.touchDz = 0;
+      knob.style.transform = 'translate(0, 0)';
+    };
+
+    const onPointerDown = (e) => {
+      if (activePointer !== null) return;
+      activePointer = e.pointerId;
+      zone.setPointerCapture(e.pointerId);
+      updateFromPoint(e.clientX, e.clientY);
+      e.preventDefault();
+    };
+
+    const onPointerMove = (e) => {
+      if (e.pointerId !== activePointer) return;
+      updateFromPoint(e.clientX, e.clientY);
+      e.preventDefault();
+    };
+
+    const onPointerUp = (e) => {
+      if (e.pointerId !== activePointer) return;
+      if (zone.hasPointerCapture(e.pointerId)) {
+        zone.releasePointerCapture(e.pointerId);
+      }
+      reset();
+    };
+
+    zone.addEventListener('pointerdown', onPointerDown);
+    zone.addEventListener('pointermove', onPointerMove);
+    zone.addEventListener('pointerup', onPointerUp);
+    zone.addEventListener('pointercancel', onPointerUp);
+
+    this._touchHandlers = { zone, onPointerDown, onPointerMove, onPointerUp };
+    this.updateMazeHint(true);
+  }
+
+  teardownTouchControls() {
+    if (!this.touchRoot) return;
+
+    const { zone, onPointerDown, onPointerMove, onPointerUp } = this._touchHandlers ?? {};
+    if (zone) {
+      zone.removeEventListener('pointerdown', onPointerDown);
+      zone.removeEventListener('pointermove', onPointerMove);
+      zone.removeEventListener('pointerup', onPointerUp);
+      zone.removeEventListener('pointercancel', onPointerUp);
+    }
+
+    this.touchRoot.remove();
+    this.touchRoot = null;
+    this._touchHandlers = null;
+    this.touchDx = 0;
+    this.touchDz = 0;
+    this.updateMazeHint(false);
+  }
+
+  updateMazeHint(isTouch) {
+    const hint = document.getElementById('maze-hint');
+    if (!hint) return;
+    hint.textContent = isTouch
+      ? 'Sol alttaki joystick ile hareket et'
+      : 'WASD veya ok tuşları ile hareket et';
   }
 
   start(options = {}) {
@@ -79,6 +185,7 @@ export class MazeScene {
       window.addEventListener('keydown', this._onKeyDown);
       window.addEventListener('keyup', this._onKeyUp);
       window.addEventListener('resize', this._onResize);
+      this.setupTouchControls();
     } else {
       this.stop();
       this.timeLeft = level.timer;
@@ -87,6 +194,8 @@ export class MazeScene {
     this.setEntrance(entranceId);
     this.resize();
     this.buildStaticLayer();
+
+    if (this.touchRoot) this.touchRoot.classList.remove('hidden');
 
     this.running = true;
     this.lastTime = performance.now();
@@ -122,10 +231,12 @@ export class MazeScene {
   stop() {
     this.running = false;
     if (this.animationId) cancelAnimationFrame(this.animationId);
+    if (this.touchRoot) this.touchRoot.classList.add('hidden');
   }
 
   disposeInternal() {
     this.stop();
+    this.teardownTouchControls();
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
     window.removeEventListener('resize', this._onResize);
@@ -345,10 +456,16 @@ export class MazeScene {
 
     let dx = 0;
     let dz = 0;
-    if (this.keys['KeyW'] || this.keys['ArrowUp']) dz -= 1;
-    if (this.keys['KeyS'] || this.keys['ArrowDown']) dz += 1;
-    if (this.keys['KeyA'] || this.keys['ArrowLeft']) dx -= 1;
-    if (this.keys['KeyD'] || this.keys['ArrowRight']) dx += 1;
+
+    if (this.touchDx !== 0 || this.touchDz !== 0) {
+      dx = this.touchDx;
+      dz = this.touchDz;
+    } else {
+      if (this.keys['KeyW'] || this.keys['ArrowUp']) dz -= 1;
+      if (this.keys['KeyS'] || this.keys['ArrowDown']) dz += 1;
+      if (this.keys['KeyA'] || this.keys['ArrowLeft']) dx -= 1;
+      if (this.keys['KeyD'] || this.keys['ArrowRight']) dx += 1;
+    }
 
     if (dx !== 0 || dz !== 0) {
       const len = Math.hypot(dx, dz);

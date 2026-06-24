@@ -2,7 +2,8 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Labirent Puzzle — Bulut Games</title>
     <link rel="stylesheet" href="/styles/main.css" />
   </head>
@@ -33,20 +34,24 @@
       <div id="maze-container"></div>
 
       <div id="hud" class="hud hidden">
-        <div class="hud-item">
-          <span class="hud-label">Seviye</span>
-          <span id="hud-level" class="hud-value">Sv.1</span>
+        <div class="hud-stats">
+          <div class="hud-item">
+            <span class="hud-label">Seviye</span>
+            <span id="hud-level" class="hud-value">Sv.1</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Süre</span>
+            <span id="timer" class="hud-value">60</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Parça</span>
+            <span id="piece-count" class="hud-value">0/10</span>
+          </div>
         </div>
-        <div class="hud-item">
-          <span class="hud-label">Süre</span>
-          <span id="timer" class="hud-value">60</span>
+        <div class="hud-footer">
+          <p id="maze-hint" class="hud-hint">WASD veya ok tuşları ile hareket et</p>
+          <button id="btn-reset-hud" class="btn-reset-hud" type="button">Baştan Başla</button>
         </div>
-        <div class="hud-item">
-          <span class="hud-label">Parça</span>
-          <span id="piece-count" class="hud-value">0/10</span>
-        </div>
-        <p id="maze-hint" class="hud-hint">WASD veya ok tuşları ile hareket et</p>
-        <button id="btn-reset-hud" class="btn-reset-hud" type="button">Baştan Başla</button>
       </div>
 
       <div id="assembly-screen" class="overlay hidden">

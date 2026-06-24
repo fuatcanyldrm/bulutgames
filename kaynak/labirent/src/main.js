@@ -7,6 +7,7 @@ import { StoryReader } from './story/StoryReader.js';
 
 const $ = (id) => document.getElementById(id);
 
+const app = $('app');
 const gameState = new GameState();
 
 const screens = {
@@ -95,6 +96,10 @@ const storyReader = new StoryReader(
   },
 );
 
+function setHudActive(active) {
+  app.classList.toggle('hud-active', active);
+}
+
 function hideAllOverlays() {
   for (const screen of Object.values(screens)) {
     if (screen === screens.hud) continue;
@@ -130,6 +135,7 @@ function enterMaze({ entranceId = 0, newMaze = true } = {}) {
   try {
     hideAllOverlays();
     screens.hud.classList.remove('hidden');
+    setHudActive(true);
     gameState.setState(STATES.MAZE);
 
     if (!mazeScene) {
@@ -140,6 +146,7 @@ function enterMaze({ entranceId = 0, newMaze = true } = {}) {
     }
 
     mazeScene.start({ entranceId, newMaze });
+    requestAnimationFrame(() => mazeScene?.resize());
     startHudLoop();
   } catch (err) {
     console.error('Labirent başlatılamadı:', err);
@@ -151,6 +158,7 @@ function enterMaze({ entranceId = 0, newMaze = true } = {}) {
 function showStartScreen() {
   hideAllOverlays();
   screens.hud.classList.add('hidden');
+  setHudActive(false);
   screens.start.classList.remove('hidden');
   screens.start.classList.add('visible');
 }
@@ -160,6 +168,7 @@ function enterEntranceSelect() {
   if (mazeScene) mazeScene.stop();
   stopHudLoop();
   screens.hud.classList.add('hidden');
+  setHudActive(false);
 
   const entrances = mazeScene?.getEntrances() ?? [];
   entrancePicker.show(entrances);
@@ -169,6 +178,7 @@ function enterAssembly() {
   if (mazeScene) mazeScene.stop();
   stopHudLoop();
   screens.hud.classList.add('hidden');
+  setHudActive(false);
   hideAllOverlays();
   gameState.sanitizePieces();
   gameState.setState(STATES.ASSEMBLY);
@@ -212,6 +222,7 @@ function restartGame() {
   gameState.reset();
   hideAllOverlays();
   screens.hud.classList.add('hidden');
+  setHudActive(false);
   screens.start.classList.remove('hidden');
   screens.start.classList.add('visible');
 }
